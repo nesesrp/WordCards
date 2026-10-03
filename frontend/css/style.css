@@ -129,7 +129,7 @@ kbd {
   opacity: 0.85;
 }
 
-input {
+input, select {
   font: inherit;
   padding: 10px 12px;
   border: 1px solid var(--border);
@@ -188,6 +188,32 @@ input:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
 .badge.due { background: var(--warn-bg); color: var(--warn-text); }
 .badge.learned { background: var(--ok-bg); color: var(--ok-text); }
 .badge.new { background: var(--new-bg); color: var(--new-text); }
+.badge.level {
+  background: var(--primary);
+  color: var(--primary-text);
+  font-size: 0.75rem;
+  vertical-align: middle;
+}
+
+/* --- Level chips --- */
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0 0; }
+.chip {
+  font: inherit;
+  font-weight: 600;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+}
+.chip small { font-weight: 400; opacity: 0.8; }
+.chip:hover { color: var(--text); }
+.chip.active { background: var(--primary); border-color: var(--primary); color: var(--primary-text); }
+.level-title { margin: 20px 0 0; font-size: 1.05rem; }
+.level-title + .deck-grid { margin-top: 12px; }
+.tile-title { margin: 0 0 4px; font-size: 1.15rem; }
 
 .bar {
   height: 8px;

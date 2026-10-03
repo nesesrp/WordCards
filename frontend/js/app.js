@@ -1,6 +1,7 @@
 import * as db from './storage.js';
 import { review, isDue, isLearned, dueLabel, LEARNED_BOX } from './srs.js';
 import { currentStreak, longestStreak, lastNDays, dateKey } from './stats.js';
+import { LEVELS, levelName, loadPresets } from './presets.js';
 
 const app = document.getElementById('app');
 
@@ -17,14 +18,33 @@ function shuffle(arr) {
   return arr;
 }
 
+const levelBadge = (level) =>
+  level ? `<span class="badge level" title="${esc(levelName(level))}">${esc(level)}</span>` : '';
+
+const levelOptions = (selected) => `
+  <option value="">Seviye yok</option>
+  ${LEVELS.map((l) => `
+    <option value="${l.id}" ${l.id === selected ? 'selected' : ''}>${l.id} · ${l.name}</option>`).join('')}`;
+
+// Row of level filter chips. `counts` maps a level to how many items it has.
+const levelChips = (active, counts, { all = true } = {}) => `
+  <div class="chips" role="tablist">
+    ${all ? `<button class="chip ${active ? '' : 'active'}" data-level="">Tümü</button>` : ''}
+    ${LEVELS.map((l) => `
+      <button class="chip ${l.id === active ? 'active' : ''}" data-level="${l.id}" title="${l.name}">
+        ${l.id}${counts[l.id] ? ` <small>${counts[l.id]}</small>` : ''}
+      </button>`).join('')}
+  </div>`;
+
 // ---------------------------------------------------------------------------
-// Routing (#/ , #/deck/:id , #/study/:id[/all] , #/stats)
+// Routing (#/ , #/deck/:id , #/study/:id[/all] , #/library , #/stats)
 // ---------------------------------------------------------------------------
 
 const routes = [
   [/^#\/?$/, renderHome],
   [/^#\/deck\/([\w-]+)$/, renderDeck],
   [/^#\/study\/([\w-]+)(?:\/(all))?$/, renderStudy],
+  [/^#\/library$/, renderLibrary],
   [/^#\/stats$/, renderStats],
 ];
 
@@ -47,7 +67,8 @@ async function router() {
 }
 
 async function updateNav(hash) {
-  const section = hash.startsWith('#/stats') ? 'stats' : 'home';
+  const section = hash.startsWith('#/stats') ? 'stats'
+    : hash.startsWith('#/library') ? 'library' : 'home';
   document.querySelectorAll('[data-nav]').forEach((a) =>
     a.classList.toggle('active', a.dataset.nav === section));
   const streak = currentStreak(await db.getActivity());
@@ -67,28 +88,48 @@ function notFound() {
 // Home: list of decks
 // ---------------------------------------------------------------------------
 
+// Level filter on the home page; kept while the app is open.
+let homeLevel = '';
+
 async function renderHome() {
   const [decks, cards] = await Promise.all([db.getDecks(), db.getAllCards()]);
   const now = Date.now();
+  const counts = {};
+  decks.forEach((d) => { if (d.level) counts[d.level] = (counts[d.level] || 0) + 1; });
+  if (homeLevel && !counts[homeLevel]) homeLevel = '';
+  const shown = homeLevel ? decks.filter((d) => d.level === homeLevel) : decks;
 
   app.innerHTML = `
-    <section class="page-head"><h1>Destelerim</h1></section>
+    <section class="page-head">
+      <h1>Destelerim</h1>
+      <a class="btn" href="#/library">📚 Hazır desteler</a>
+    </section>
     <form class="inline-form" id="new-deck">
       <input name="deckName" placeholder="Yeni deste adı (örn. İngilizce Fiiller)" maxlength="60" required>
+      <select name="level" aria-label="Seviye">${levelOptions('')}</select>
       <button class="btn primary">Deste oluştur</button>
     </form>
-    ${decks.length
-      ? `<div class="deck-grid">${decks
+    ${Object.keys(counts).length ? levelChips(homeLevel, counts) : ''}
+    ${shown.length
+      ? `<div class="deck-grid">${shown
           .map((d) => deckTile(d, cards.filter((c) => c.deckId === d.id), now))
           .join('')}</div>`
-      : `<p class="empty">Henüz bir desten yok. Yukarıdan ilk desteni oluştur.</p>`}`;
+      : `<p class="empty">Henüz bir desten yok. Kendi desteni oluştur ya da
+          <a href="#/library">seviyene uygun hazır bir deste ekle</a>.</p>`}`;
 
   app.querySelector('#new-deck').addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = e.target.deckName.value.trim();
     if (!name) return;
-    const deck = await db.createDeck(name);
+    const deck = await db.createDeck(name, e.target.level.value || null);
     location.hash = `#/deck/${deck.id}`;
+  });
+
+  app.querySelector('.chips')?.addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-level]');
+    if (!chip) return;
+    homeLevel = chip.dataset.level;
+    renderHome();
   });
 }
 
@@ -99,7 +140,7 @@ function deckTile(deck, cards, now) {
   return `
     <article class="deck-tile">
       <a href="#/deck/${deck.id}" class="deck-link">
-        <h2>${esc(deck.name)}</h2>
+        <h2>${levelBadge(deck.level)} ${esc(deck.name)}</h2>
         <p class="muted">${cards.length} kart · ${learned} öğrenildi</p>
       </a>
       <div class="bar" title="%${pct} öğrenildi"><span style="width:${pct}%"></span></div>
@@ -133,10 +174,10 @@ async function renderDeck(id) {
   app.innerHTML = `
     <a href="#/" class="back">← Desteler</a>
     <section class="page-head">
-      <h1 id="deck-title">${esc(deck.name)}</h1>
+      <h1 id="deck-title">${levelBadge(deck.level)} ${esc(deck.name)}</h1>
       <div class="head-actions">
         ${studyBtn}
-        <button class="btn" data-action="rename">Yeniden adlandır</button>
+        <button class="btn" data-action="rename">Düzenle</button>
         <button class="btn danger" data-action="delete-deck">Desteyi sil</button>
       </div>
     </section>
@@ -197,6 +238,7 @@ async function renderDeck(id) {
     title.innerHTML = `
       <form class="inline-form rename">
         <input name="deckName" value="${esc(deck.name)}" maxlength="60" required>
+        <select name="level" aria-label="Seviye">${levelOptions(deck.level)}</select>
         <button class="btn primary small">Kaydet</button>
       </form>`;
     const f = title.querySelector('form');
@@ -205,7 +247,7 @@ async function renderDeck(id) {
       e.preventDefault();
       const name = f.deckName.value.trim();
       if (!name) return;
-      await db.renameDeck(id, name);
+      await db.updateDeck(id, { name, level: f.level.value || null });
       await renderDeck(id);
     });
   }
@@ -391,6 +433,98 @@ async function renderStudy(id, all) {
 }
 
 // ---------------------------------------------------------------------------
+// Library: ready-made decks by CEFR level
+// ---------------------------------------------------------------------------
+
+async function renderLibrary() {
+  let all;
+  try {
+    all = await loadPresets();
+  } catch {
+    app.innerHTML = `
+      <section class="page-head"><h1>Hazır Desteler</h1></section>
+      <p class="empty">Kelime listesi yüklenemedi. Sayfayı yenileyip tekrar dene.</p>`;
+    return;
+  }
+  const [decks, settings] = await Promise.all([db.getDecks(), db.getSettings()]);
+  const level = settings.level || LEVELS[0].id;
+  const presets = all.filter((p) => p.level === level);
+  // presetId -> the user's copy, so a preset isn't added twice by accident.
+  const added = new Map(decks.filter((d) => d.presetId).map((d) => [d.presetId, d]));
+  const missing = presets.filter((p) => !added.has(p.id));
+  const wordCount = (list) => list.reduce((n, p) => n + p.words.length, 0);
+  const counts = {};
+  all.forEach((p) => { counts[p.level] = (counts[p.level] || 0) + 1; });
+
+  const section = (title, list) => list.length ? `
+    <h2 class="section-title">${title}</h2>
+    <div class="deck-grid">${list.map((p) => presetTile(p, added.get(p.id))).join('')}</div>` : '';
+
+  app.innerHTML = `
+    <section class="page-head">
+      <h1>Hazır Desteler</h1>
+      ${missing.length > 1
+        ? `<button class="btn primary" data-action="add-all">${level} destelerinin hepsini ekle (${missing.length})</button>`
+        : ''}
+    </section>
+    <p class="muted">Seviyeni seç; o seviyeye uygun İngilizce → Türkçe kelime destelerini tek tıkla ekle.</p>
+    ${levelChips(level, counts, { all: false })}
+    <p class="level-title">
+      <strong>${level}</strong> · ${esc(levelName(level))}
+      <span class="muted small">· ${presets.length} deste, ${wordCount(presets).toLocaleString('tr')} kelime</span>
+    </p>
+    ${section('Konular', presets.filter((p) => p.kind === 'topic'))}
+    ${section('Kelime türleri', presets.filter((p) => p.kind !== 'topic'))}
+    <p class="muted small note">
+      Kelimeler ve seviyeler: CEFR-J Vocabulary Profile ve Octanove C1/C2 listeleri.
+      Türkçe karşılıklar: Vikisözlük (kontrol edilip düzeltildi).
+    </p>`;
+
+  let busy = false;
+  app.addEventListener('click', onClick);
+  cleanup = () => app.removeEventListener('click', onClick);
+
+  async function onClick(e) {
+    const chip = e.target.closest('[data-level]');
+    const btn = e.target.closest('[data-action]');
+    if (busy) return;
+    if (chip) {
+      await db.saveSettings({ level: chip.dataset.level });
+    } else if (btn?.dataset.action === 'add') {
+      busy = true;
+      await db.importPresets([presets.find((p) => p.id === btn.dataset.id)]);
+    } else if (btn?.dataset.action === 'add-all') {
+      const words = wordCount(missing);
+      if (!confirm(`${missing.length} deste (${words.toLocaleString('tr')} kelime) eklensin mi?`)) return;
+      busy = true;
+      await db.importPresets(missing);
+    } else {
+      return;
+    }
+    cleanup();
+    renderLibrary();
+  }
+}
+
+function presetTile(preset, deck) {
+  const sample = preset.words.slice(0, 4).map(([w]) => esc(w)).join(', ');
+  return `
+    <article class="deck-tile">
+      <div>
+        <h2 class="tile-title">${levelBadge(preset.level)} ${esc(preset.name)}</h2>
+        <p class="muted small">${preset.words.length} kelime · ${sample}…</p>
+      </div>
+      <div class="tile-actions">
+        ${deck
+          ? `<span class="badge learned">✓ Eklendi</span>
+             <a class="btn small" href="#/deck/${deck.id}">Desteye git</a>`
+          : `<span></span>
+             <button class="btn primary small" data-action="add" data-id="${preset.id}">Ekle</button>`}
+      </div>
+    </article>`;
+}
+
+// ---------------------------------------------------------------------------
 // Progress / stats
 // ---------------------------------------------------------------------------
 
@@ -438,7 +572,7 @@ async function renderStats() {
         const pct = dc.length ? Math.round((dl / dc.length) * 100) : 0;
         return `
           <li>
-            <a href="#/deck/${d.id}">${esc(d.name)}</a>
+            <a href="#/deck/${d.id}">${levelBadge(d.level)} ${esc(d.name)}</a>
             <div class="bar"><span style="width:${pct}%"></span></div>
             <span class="muted small">${dl}/${dc.length} · %${pct}</span>
           </li>`;

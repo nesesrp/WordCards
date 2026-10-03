@@ -8,7 +8,7 @@ import { dateKey } from './stats.js';
 
 const KEY = 'wordcards:v1';
 
-const emptyState = () => ({ decks: [], cards: [], activity: {} });
+const emptyState = () => ({ decks: [], cards: [], activity: {}, settings: {} });
 
 function read() {
   try {
@@ -36,27 +36,43 @@ export async function getDeck(id) {
   return read().decks.find((d) => d.id === id) ?? null;
 }
 
-export async function createDeck(name) {
+export async function createDeck(name, level = null) {
   const state = read();
-  const deck = { id: uid(), name, createdAt: Date.now() };
+  const deck = { id: uid(), name, level, createdAt: Date.now() };
   state.decks.push(deck);
   write(state);
   return deck;
 }
 
-export async function renameDeck(id, name) {
+// fields: { name?, level? }
+export async function updateDeck(id, fields) {
   const state = read();
   const deck = state.decks.find((d) => d.id === id);
-  if (deck) deck.name = name;
+  if (deck) Object.assign(deck, fields);
   write(state);
   return deck;
 }
 
-export async function deleteDeck(id) {
+// Copies ready-made decks (see presets.js) into the user's decks with fresh
+// cards. Takes a list so that adding a whole level is a single write.
+export async function importPresets(presets) {
   const state = read();
-  state.decks = state.decks.filter((d) => d.id !== id);
-  state.cards = state.cards.filter((c) => c.deckId !== id);
+  const now = Date.now();
+  const decks = presets.map((preset) => {
+    const deck = {
+      id: uid(), name: preset.name, level: preset.level, presetId: preset.id, createdAt: now,
+    };
+    state.decks.push(deck);
+    // Cards are listed newest first, so count down to keep the preset's order.
+    preset.words.forEach(([front, back], i) => {
+      state.cards.push({
+        id: uid(), deckId: deck.id, front, back, createdAt: now - i, ...newCardFields(now),
+      });
+    });
+    return deck;
+  });
   write(state);
+  return decks;
 }
 
 // --- Cards ---
@@ -102,6 +118,19 @@ export async function saveReview(card) {
   const today = dateKey();
   state.activity[today] = (state.activity[today] || 0) + 1;
   write(state);
+}
+
+// --- Settings ---
+
+export async function getSettings() {
+  return read().settings;
+}
+
+export async function saveSettings(fields) {
+  const state = read();
+  state.settings = { ...state.settings, ...fields };
+  write(state);
+  return state.settings;
 }
 
 // --- Stats ---
