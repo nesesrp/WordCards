@@ -135,6 +135,14 @@ export async function saveSettings(fields) {
 
 // --- Stats ---
 
+// Counts practice answers (writing, listening, game) towards today's activity.
+export async function logActivity(count = 1) {
+  const state = read();
+  const today = dateKey();
+  state.activity[today] = (state.activity[today] || 0) + count;
+  write(state);
+}
+
 export async function getActivity() {
   return read().activity;
 }

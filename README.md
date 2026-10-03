@@ -4,6 +4,8 @@ A flashcard app for learning vocabulary with spaced repetition.
 
 ## Features
 
+- **Home page:** the entry point to every way of practising: Kelime (Vocabulary), Yazma (Writing), Dinleme (Listening), Oyun (Game) and Okuma (Reading, coming soon)
+- **Practice modes:** use your own cards, from all decks or one deck. *Writing:* see the Turkish meaning, type the English word. *Listening:* hear the word (browser speech synthesis, no audio files) and pick its meaning. *Game:* match words with their meanings against the clock. Practice doesn't change the spaced repetition schedule but counts towards the daily streak
 - **Decks:** create, rename and delete decks (e.g. "English Verbs", "Spanish Food")
 - **CEFR levels:** every deck can have a level (A1, A2, B1, B2, C1, C2). The home page can be filtered by level
 - **Ready-made decks:** the "Hazır" page has about 9,800 English → Turkish words in 230+ decks, split by level, then by topic (e.g. "Yiyecek ve İçecek") or by part of speech ("Fiiller 1", "Fiiller 2"…). Pick your level and add a deck, or all decks of that level, with one click. See [Word lists](#word-lists)
@@ -32,6 +34,9 @@ frontend/
   index.html
   css/style.css
   js/app.js       # routing and views (UI)
+  js/practice.js  # writing, listening and matching game modes
+  js/speech.js    # English pronunciation (Web Speech API)
+  js/util.js      # shared helpers
   js/storage.js   # data layer (localStorage for now)
   js/presets.js   # CEFR levels; loads the ready-made decks
   data/wordlist.json  # ready-made decks (generated, see below)

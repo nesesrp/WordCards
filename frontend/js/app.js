@@ -2,21 +2,10 @@ import * as db from './storage.js';
 import { review, isDue, isLearned, dueLabel, LEARNED_BOX } from './srs.js';
 import { currentStreak, longestStreak, lastNDays, dateKey } from './stats.js';
 import { LEVELS, levelName, loadPresets } from './presets.js';
+import { renderPractice } from './practice.js';
+import { esc, shuffle } from './util.js';
 
 const app = document.getElementById('app');
-
-// Safely inserts user-entered text into HTML.
-const esc = (s) =>
-  String(s).replace(/[&<>"']/g, (c) =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-
-function shuffle(arr) {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
 
 const levelBadge = (level) =>
   level ? `<span class="badge level" title="${esc(levelName(level))}">${esc(level)}</span>` : '';
@@ -37,11 +26,16 @@ const levelChips = (active, counts, { all = true } = {}) => `
   </div>`;
 
 // ---------------------------------------------------------------------------
-// Routing (#/ , #/deck/:id , #/study/:id[/all] , #/library , #/stats)
+// Routing (#/ , #/decks , #/deck/:id , #/study/:id[/all] , #/practice/:mode ,
+// #/library , #/stats)
 // ---------------------------------------------------------------------------
 
 const routes = [
-  [/^#\/?$/, renderHome],
+  [/^#\/?$/, renderHub],
+  [/^#\/decks$/, renderDecks],
+  [/^#\/practice\/(writing|listening|game)$/, async (mode) => {
+    cleanup = await renderPractice(app, mode);
+  }],
   [/^#\/deck\/([\w-]+)$/, renderDeck],
   [/^#\/study\/([\w-]+)(?:\/(all))?$/, renderStudy],
   [/^#\/library$/, renderLibrary],
@@ -68,7 +62,8 @@ async function router() {
 
 async function updateNav(hash) {
   const section = hash.startsWith('#/stats') ? 'stats'
-    : hash.startsWith('#/library') ? 'library' : 'home';
+    : hash.startsWith('#/library') ? 'library'
+    : /^#\/(decks|deck\/|study\/)/.test(hash) ? 'decks' : 'home';
   document.querySelectorAll('[data-nav]').forEach((a) =>
     a.classList.toggle('active', a.dataset.nav === section));
   const streak = currentStreak(await db.getActivity());
@@ -81,17 +76,69 @@ router();
 function notFound() {
   app.innerHTML = `
     <p class="empty">Aradığın deste bulunamadı.</p>
-    <p class="center"><a class="btn" href="#/">Destelere dön</a></p>`;
+    <p class="center"><a class="btn" href="#/decks">Destelere dön</a></p>`;
 }
 
 // ---------------------------------------------------------------------------
-// Home: list of decks
+// Home: entry point to every way of practising
 // ---------------------------------------------------------------------------
 
-// Level filter on the home page; kept while the app is open.
+async function renderHub() {
+  const [cards, activity] = await Promise.all([db.getAllCards(), db.getActivity()]);
+  const now = Date.now();
+  const due = cards.filter((c) => isDue(c, now)).length;
+  const streak = currentStreak(activity, now);
+
+  const tile = ({ href, icon, title, en, text, badge }) => `
+    <${href ? `a href="${href}"` : 'div aria-disabled="true"'} class="hub-tile ${href ? '' : 'disabled'}">
+      <span class="hub-icon" aria-hidden="true">${icon}</span>
+      <span class="hub-title">${title} <span class="muted small">${en}</span></span>
+      <span class="muted small">${text}</span>
+      ${badge ? `<span class="badge ${badge.cls}">${badge.text}</span>` : ''}
+    </${href ? 'a' : 'div'}>`;
+
+  app.innerHTML = `
+    <section class="hero">
+      <h1>Bugün ne çalışalım?</h1>
+      <p class="muted">${cards.length
+        ? `${cards.length.toLocaleString('tr')} kelimen var${streak ? ` · 🔥 ${streak} günlük seri` : ''}.`
+        : 'Başlamak için seviyene uygun hazır bir deste ekle ya da kendi desteni oluştur.'}</p>
+      ${cards.length ? '' : '<a class="btn primary" href="#/library">📚 Hazır desteler</a>'}
+    </section>
+    <div class="hub-grid">
+      ${tile({
+        href: '#/decks', icon: '🗂️', title: 'Kelime', en: 'Vocabulary',
+        text: 'Destelerini kartlarla, aralıklı tekrarla çalış.',
+        badge: due ? { cls: 'due', text: `${due} kart bekliyor` } : null,
+      })}
+      ${tile({
+        href: '#/practice/writing', icon: '✍️', title: 'Yazma', en: 'Writing',
+        text: 'Türkçesini gör, İngilizcesini yaz.',
+      })}
+      ${tile({
+        href: '#/practice/listening', icon: '🎧', title: 'Dinleme', en: 'Listening',
+        text: 'Kelimeyi dinle, anlamını seç.',
+      })}
+      ${tile({
+        href: '#/practice/game', icon: '🎮', title: 'Oyun', en: 'Game',
+        text: 'Kelimeleri anlamlarıyla eşleştir, süreye karşı yarış.',
+      })}
+      ${tile({
+        icon: '📖', title: 'Okuma', en: 'Reading',
+        text: 'Seviyene göre kısa metinler.',
+        badge: { cls: '', text: 'Yakında' },
+      })}
+    </div>`;
+}
+
+// ---------------------------------------------------------------------------
+// Decks: list of decks
+// ---------------------------------------------------------------------------
+
+// Level filter on the decks page; kept while the app is open.
 let homeLevel = '';
 
-async function renderHome() {
+async function renderDecks() {
   const [decks, cards] = await Promise.all([db.getDecks(), db.getAllCards()]);
   const now = Date.now();
   const counts = {};
@@ -129,7 +176,7 @@ async function renderHome() {
     const chip = e.target.closest('[data-level]');
     if (!chip) return;
     homeLevel = chip.dataset.level;
-    renderHome();
+    renderDecks();
   });
 }
 
@@ -172,7 +219,7 @@ async function renderDeck(id) {
       : `<a class="btn" href="#/study/${id}/all" title="Bugün tekrar bekleyen kart yok">Hepsini tekrar et</a>`;
 
   app.innerHTML = `
-    <a href="#/" class="back">← Desteler</a>
+    <a href="#/decks" class="back">← Desteler</a>
     <section class="page-head">
       <h1 id="deck-title">${levelBadge(deck.level)} ${esc(deck.name)}</h1>
       <div class="head-actions">
@@ -220,7 +267,7 @@ async function renderDeck(id) {
       case 'delete-deck':
         if (confirm(`"${deck.name}" destesi ve içindeki ${cards.length} kart silinsin mi?`)) {
           await db.deleteDeck(id);
-          location.hash = '#/';
+          location.hash = '#/decks';
         }
         break;
       case 'edit':
@@ -396,7 +443,7 @@ async function renderStudy(id, all) {
         <p>${total} kartı tamamladın${missed.size ? `, ${missed.size} tanesini ilk seferde bilemedin` : ' ve hepsini ilk seferde bildin'}.</p>
         ${streak ? `<p class="streak-big">🔥 ${streak} günlük seri</p>` : ''}
         <div class="done-actions">
-          <a class="btn" href="#/">Desteler</a>
+          <a class="btn" href="#/decks">Desteler</a>
           <a class="btn primary" href="#/deck/${id}">Desteye dön</a>
         </div>
       </div>`;

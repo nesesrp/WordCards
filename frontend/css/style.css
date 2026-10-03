@@ -369,9 +369,101 @@ input:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
 .deck-progress a { text-decoration: none; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .note { margin-top: 32px; }
 
+/* --- Home (hub) --- */
+
+.hero { margin-bottom: 24px; }
+.hero h1 { margin: 0 0 4px; font-size: 1.75rem; }
+.hero p { margin: 0 0 12px; }
+
+.hub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+.hub-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  text-decoration: none;
+  transition: transform 0.1s, border-color 0.15s;
+}
+a.hub-tile:hover { border-color: var(--primary); transform: translateY(-2px); }
+.hub-tile.disabled { opacity: 0.6; box-shadow: none; }
+.hub-icon { font-size: 2rem; line-height: 1; margin-bottom: 4px; }
+.hub-title { font-size: 1.15rem; font-weight: 700; }
+.hub-tile .badge { margin-top: 6px; }
+
+/* --- Practice modes --- */
+
+.prompt-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 160px;
+  padding: 24px;
+  margin: 16px 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+.prompt-card .hint { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.prompt { margin: 0; font-size: 1.6rem; font-weight: 600; overflow-wrap: anywhere; }
+.answer-form { display: flex; gap: 8px; }
+.answer-form input { flex: 1; font-size: 1.1rem; }
+.answer-form input[readonly] { background: var(--surface-2); }
+.feedback { min-height: 2.5em; margin: 12px 0; text-align: center; font-size: 1.05rem; }
+.feedback p { margin: 12px 0 0; }
+.ok { color: var(--success); font-weight: 600; }
+.bad { color: var(--danger); }
+.bad strong { color: var(--text); }
+
+.options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.option, .tile {
+  font: inherit;
+  text-align: left;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+  transition: background 0.15s, border-color 0.15s;
+}
+.option:hover:not(:disabled), .tile:hover:not(:disabled) { border-color: var(--primary); }
+.option kbd { margin-right: 6px; }
+.option.correct, .tile.matched { background: var(--ok-bg); border-color: var(--success); color: var(--ok-text); }
+.option.wrong, .tile.wrong { background: color-mix(in srgb, var(--danger) 15%, var(--surface)); border-color: var(--danger); }
+.option:disabled { cursor: default; }
+
+.game-head { display: flex; justify-content: space-between; margin: 16px 0 12px; color: var(--muted); }
+.game-head strong { color: var(--text); }
+.match { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.match-col { display: grid; gap: 10px; align-content: start; }
+.tile { text-align: center; min-height: 56px; }
+.tile.selected { border-color: var(--primary); background: var(--new-bg); color: var(--new-text); }
+.tile.matched { cursor: default; opacity: 0.6; }
+
+#practice-deck { max-width: 260px; }
+
 /* --- Mobile --- */
 
 @media (max-width: 600px) {
+  .logo-text { display: none; }
+  .topbar nav a { padding: 6px 8px; font-size: 0.9rem; }
+  .options { grid-template-columns: 1fr; }
+  .answer-form { flex-direction: column; }
+  #practice-deck { max-width: 100%; width: 100%; }
   .inline-form, .card-form { flex-direction: column; }
   .card-row { flex-wrap: wrap; }
   .card-text { grid-template-columns: 1fr; gap: 2px; flex-basis: 100%; }
