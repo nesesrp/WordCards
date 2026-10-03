@@ -89,45 +89,37 @@ async function renderHub() {
   const due = cards.filter((c) => isDue(c, now)).length;
   const streak = currentStreak(activity, now);
 
-  const tile = ({ href, icon, title, en, text, badge }) => `
-    <${href ? `a href="${href}"` : 'div aria-disabled="true"'} class="hub-tile ${href ? '' : 'disabled'}">
+  // Section names stay in English on purpose: they name the skills being learned.
+  const tile = ({ href, icon, title, color, badge }) => `
+    <${href ? `a href="${href}"` : 'div aria-disabled="true"'} class="hub-tile ${color} ${href ? '' : 'disabled'}">
+      ${badge ? `<span class="hub-badge" title="${badge.title}">${badge.text}</span>` : ''}
       <span class="hub-icon" aria-hidden="true">${icon}</span>
-      <span class="hub-title">${title} <span class="muted small">${en}</span></span>
-      <span class="muted small">${text}</span>
-      ${badge ? `<span class="badge ${badge.cls}">${badge.text}</span>` : ''}
+      <span class="hub-title">${title}</span>
     </${href ? 'a' : 'div'}>`;
+  const soon = { text: 'Soon', title: 'Yakında' };
 
   app.innerHTML = `
     <section class="hero">
       <h1>Bugün ne çalışalım?</h1>
-      <p class="muted">${cards.length
-        ? `${cards.length.toLocaleString('tr')} kelimen var${streak ? ` · 🔥 ${streak} günlük seri` : ''}.`
-        : 'Başlamak için seviyene uygun hazır bir deste ekle ya da kendi desteni oluştur.'}</p>
-      ${cards.length ? '' : '<a class="btn primary" href="#/library">📚 Hazır desteler</a>'}
+      ${cards.length ? `
+        <div class="hero-stats">
+          <span class="pill">📚 ${cards.length.toLocaleString('tr')} kelime</span>
+          ${streak ? `<span class="pill">🔥 ${streak} günlük seri</span>` : ''}
+          ${due ? `<a class="pill due" href="#/decks">⏰ ${due} kart bekliyor</a>` : ''}
+        </div>` : `
+        <p class="muted">Başlamak için seviyene uygun hazır bir deste ekle ya da kendi desteni oluştur.</p>
+        <a class="btn primary" href="#/library">📚 Hazır desteler</a>`}
     </section>
     <div class="hub-grid">
+      ${tile({ href: '#/practice/listening', icon: '🎧', title: 'Listening', color: 'violet' })}
+      ${tile({ href: '#/practice/writing', icon: '✍️', title: 'Writing', color: 'orange' })}
       ${tile({
-        href: '#/decks', icon: '🗂️', title: 'Kelime', en: 'Vocabulary',
-        text: 'Destelerini kartlarla, aralıklı tekrarla çalış.',
-        badge: due ? { cls: 'due', text: `${due} kart bekliyor` } : null,
+        href: '#/decks', icon: '🗂️', title: 'Vocabulary', color: 'indigo',
+        badge: due ? { text: due, title: `${due} kart tekrar bekliyor` } : null,
       })}
-      ${tile({
-        href: '#/practice/writing', icon: '✍️', title: 'Yazma', en: 'Writing',
-        text: 'Türkçesini gör, İngilizcesini yaz.',
-      })}
-      ${tile({
-        href: '#/practice/listening', icon: '🎧', title: 'Dinleme', en: 'Listening',
-        text: 'Kelimeyi dinle, anlamını seç.',
-      })}
-      ${tile({
-        href: '#/practice/game', icon: '🎮', title: 'Oyun', en: 'Game',
-        text: 'Kelimeleri anlamlarıyla eşleştir, süreye karşı yarış.',
-      })}
-      ${tile({
-        icon: '📖', title: 'Okuma', en: 'Reading',
-        text: 'Seviyene göre kısa metinler.',
-        badge: { cls: '', text: 'Yakında' },
-      })}
+      ${tile({ icon: '📖', title: 'Reading', color: 'teal', badge: soon })}
+      ${tile({ icon: '🎙️', title: 'Podcast', color: 'pink', badge: soon })}
+      ${tile({ href: '#/practice/game', icon: '🎮', title: 'Game', color: 'green' })}
     </div>`;
 }
 
