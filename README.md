@@ -5,7 +5,7 @@ A flashcard app for learning vocabulary with spaced repetition.
 ## Features
 
 - **Home page:** the entry point to every way of practising: Kelime (Vocabulary), Yazma (Writing), Dinleme (Listening), Oyun (Game) and Okuma (Reading, coming soon)
-- **Practice modes:** use your own cards, from all decks or one deck. *Writing:* see the Turkish meaning, type the English word. *Listening:* hear the word (browser speech synthesis, no audio files) and either pick its meaning or type what you heard (dictation). Dictation has a slow replay button and, after a wrong answer, marks the extra and missing letters. *Game:* match words with their meanings against the clock. Practice doesn't change the spaced repetition schedule but counts towards the daily streak
+- **Practice modes:** use your own cards, from all decks or one deck. *Writing:* see the Turkish meaning, type the English word. *Listening:* hear the word (browser speech synthesis, no audio files) and either pick its meaning or type what you heard (dictation). Dictation has slow replay, a hint and an "I don't know" button, accepts words that sound the same (e.g. *their* for *there*), and after a wrong answer marks the extra and missing letters. Both listening modes list the missed words at the end of a round. *Game:* match words with their meanings against the clock. Practice doesn't change the spaced repetition schedule but counts towards the daily streak
 - **Decks:** create, rename and delete decks (e.g. "English Verbs", "Spanish Food")
 - **CEFR levels:** every deck can have a level (A1, A2, B1, B2, C1, C2). The home page can be filtered by level
 - **Ready-made decks:** the "Hazır" page has about 9,800 English → Turkish words in 230+ decks, split by level, then by topic (e.g. "Yiyecek ve İçecek") or by part of speech ("Fiiller 1", "Fiiller 2"…). Pick your level and add a deck, or all decks of that level, with one click. See [Word lists](#word-lists)
@@ -36,6 +36,7 @@ frontend/
   js/app.js       # routing and views (UI)
   js/practice.js  # writing, listening, dictation and matching game modes
   js/speech.js    # English pronunciation (Web Speech API)
+  js/homophones.js  # words that sound the same, accepted in dictation
   js/util.js      # shared helpers
   js/storage.js   # data layer (localStorage for now)
   js/presets.js   # CEFR levels; loads the ready-made decks

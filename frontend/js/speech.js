@@ -3,6 +3,10 @@
 
 export const canSpeak = 'speechSynthesis' in window;
 
+// Chrome loads its voices in the background; asking early means the English
+// voice is usually ready by the first word.
+if (canSpeak) speechSynthesis.getVoices();
+
 function englishVoice() {
   const voices = speechSynthesis.getVoices();
   return voices.find((v) => v.lang === 'en-US') ?? voices.find((v) => v.lang.startsWith('en'));

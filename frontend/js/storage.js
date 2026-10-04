@@ -10,10 +10,29 @@ const KEY = 'wordcards:v1';
 
 const emptyState = () => ({ decks: [], cards: [], activity: {}, settings: {} });
 
+// Ready-made cards used to get Turkish part-of-speech labels on the English
+// front, e.g. "like (fiil)". They are renamed once to English ("like (verb)").
+const OLD_POS_LABELS = {
+  isim: 'noun', fiil: 'verb', sıfat: 'adjective', zarf: 'adverb', zamir: 'pronoun',
+  belirleyici: 'determiner', edat: 'preposition', bağlaç: 'conjunction', sayı: 'number',
+  ünlem: 'interjection', mastar: 'particle',
+};
+const OLD_POS_LABEL = new RegExp(` \\((${Object.keys(OLD_POS_LABELS).join('|')})\\)$`);
+
+function migrate(state) {
+  if (state.settings.posLabelsEn) return state;
+  for (const card of state.cards) {
+    card.front = card.front.replace(OLD_POS_LABEL, (_, label) => ` (${OLD_POS_LABELS[label]})`);
+  }
+  state.settings.posLabelsEn = true;
+  write(state);
+  return state;
+}
+
 function read() {
   try {
     const raw = localStorage.getItem(KEY);
-    return raw ? { ...emptyState(), ...JSON.parse(raw) } : emptyState();
+    return raw ? migrate({ ...emptyState(), ...JSON.parse(raw) }) : emptyState();
   } catch {
     return emptyState();
   }

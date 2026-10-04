@@ -528,6 +528,11 @@ a.hub-tile:active { transform: translateY(-1px); }
 .dictation-diff mark.extra { background: color-mix(in srgb, var(--danger) 20%, transparent); text-decoration: line-through; }
 .dictation-diff mark.miss { background: var(--ok-bg); color: var(--ok-text); text-decoration: underline; }
 .chips a.chip { text-decoration: none; }
+.practice-help { display: flex; justify-content: center; gap: 8px; }
+.practice-help[hidden] { display: none; }
+.missed-list { list-style: none; margin: 0 auto; padding: 0; max-width: 420px; display: grid; gap: 6px; text-align: left; }
+.missed-list li { display: flex; align-items: center; gap: 10px; padding: 6px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+.missed-list .muted { margin-left: auto; text-align: right; }
 
 #practice-deck { max-width: 260px; }
 

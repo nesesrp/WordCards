@@ -5,6 +5,7 @@
 import * as db from './storage.js';
 import { esc, shuffle } from './util.js';
 import { canSpeak, speak } from './speech.js';
+import { homophones } from './homophones.js';
 
 const ROUND = 10;
 const PAIRS = 6;
@@ -17,7 +18,7 @@ export const MODES = {
 };
 
 // Fronts of ready-made cards can look like "airplane / aeroplane" or
-// "like (fiil)": the label is dropped and each variant is a valid answer.
+// "like (verb)": the label is dropped and each variant is a valid answer.
 const LABEL = /\s*\([^)]*\)\s*$/;
 const normalize = (s) =>
   s.toLocaleLowerCase('en').replace(/[’`]/g, "'").replace(/[.!?,;:]+$/, '').replace(/\s+/g, ' ').trim();
@@ -91,12 +92,23 @@ const progress = (done, total) => `
     <span class="muted small">${done} / ${total}</span>
   </div>`;
 
-function result(emoji, title, text) {
+// `missed` (optional) lists the cards answered wrong, each with a play button.
+function result(emoji, title, text, missed = []) {
   return `
     <div class="done">
       <div class="done-emoji">${emoji}</div>
       <h1>${title}</h1>
       <p class="muted">${text}</p>
+      ${missed.length ? `
+        <h2 class="section-title">Tekrar etmen gerekenler</h2>
+        <ul class="missed-list">
+          ${missed.map((c) => `
+            <li>
+              <button class="icon-btn" data-action="say" data-text="${esc(spoken(c.front))}" aria-label="Dinle">🔊</button>
+              <strong>${esc(c.front)}</strong>
+              <span class="muted">${esc(c.back)}</span>
+            </li>`).join('')}
+        </ul>` : ''}
       <div class="done-actions">
         <a class="btn" href="#/">Ana sayfa</a>
         <button class="btn primary" data-action="restart">Tekrar oyna</button>
@@ -234,19 +246,20 @@ function writing(el, pool) {
 // ---------------------------------------------------------------------------
 
 function listening(el, pool) {
-  let queue, i, score, answered;
+  let queue, i, score, answered, missed;
 
   function start() {
     queue = shuffle([...pool]).slice(0, ROUND);
     i = 0;
     score = 0;
+    missed = [];
     show();
   }
 
   function show() {
     if (i >= queue.length) {
       el.innerHTML = result(scoreEmoji(score, queue.length), `${score} / ${queue.length}`,
-        'Dinleyerek tanıdığın kelimeler kalıcı olur.');
+        'Dinleyerek tanıdığın kelimeler kalıcı olur.', missed);
       return;
     }
     answered = false;
@@ -271,6 +284,7 @@ function listening(el, pool) {
     const card = queue[i];
     const ok = id === card.id;
     if (ok) score++;
+    else missed.push(card);
     el.querySelectorAll('.option').forEach((b) => {
       b.disabled = true;
       if (b.dataset.id === card.id) b.classList.add('correct');
@@ -297,6 +311,7 @@ function listening(el, pool) {
     else if (action === 'pick') pick(btn.dataset.id);
     else if (action === 'next') next();
     else if (action === 'restart') start();
+    else if (action === 'say') speak(btn.dataset.text);
   }
 
   function onKey(e) {
@@ -320,7 +335,7 @@ function listening(el, pool) {
 // ---------------------------------------------------------------------------
 
 function dictation(el, pool) {
-  let queue, i, score, checked;
+  let queue, i, score, checked, missed;
 
   const say = (rate) => speak(spoken(queue[i].front), rate);
 
@@ -328,13 +343,14 @@ function dictation(el, pool) {
     queue = shuffle([...pool]).slice(0, ROUND);
     i = 0;
     score = 0;
+    missed = [];
     show();
   }
 
   function show() {
     if (i >= queue.length) {
       el.innerHTML = result(scoreEmoji(score, queue.length), `${score} / ${queue.length}`,
-        'Duyduğunu yazmak hem kulağını hem yazımını geliştirir.');
+        'Duyduğunu yazmak hem kulağını hem yazımını geliştirir.', missed);
       return;
     }
     checked = false;
@@ -345,26 +361,47 @@ function dictation(el, pool) {
         <button type="button" class="btn small" data-action="slow">🐢 Yavaş dinle</button>
       </div>
       <form class="answer-form" autocomplete="off">
-        <input name="answer" placeholder="Duyduğunu yaz" autocapitalize="off" spellcheck="false" aria-label="Cevabın">
+        <input name="answer" placeholder="Duyduğunu yaz" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Cevabın">
         <button class="btn primary">Kontrol et</button>
       </form>
-      <div class="feedback" aria-live="polite"></div>`;
+      <div class="feedback" aria-live="polite"></div>
+      <p class="center practice-help">
+        <button type="button" class="btn small" data-action="hint">İpucu</button>
+        <button type="button" class="btn small" data-action="skip">Bilmiyorum</button>
+      </p>`;
     el.querySelector('input').focus();
     say();
   }
 
-  async function check() {
+  // `skipped`: the user pressed "Bilmiyorum", so there is nothing to compare.
+  async function check(skipped = false) {
     const card = queue[i];
     const input = el.querySelector('input');
-    if (!input.value.trim()) return;
+    if (!skipped && !input.value.trim()) return;
     checked = true;
-    const ok = answers(card.front).includes(normalize(input.value));
-    if (ok) score++;
+    const typed = normalize(input.value);
+    const right = answers(card.front);
+    const ok = !skipped && right.includes(typed);
+    // Sounds the same as the answer, so it can't be told apart by ear.
+    const soundsSame = !skipped && !ok && right.some((w) => homophones(w).includes(typed));
+    if (ok || soundsSame) score++;
+    else missed.push(card);
     input.readOnly = true;
     el.querySelector('.answer-form .btn').textContent = 'Devam →';
+    el.querySelector('.practice-help').hidden = true;
     const meaning = `<p class="muted">${esc(card.front)} = ${esc(card.back)}</p>`;
     if (ok) {
       el.querySelector('.feedback').innerHTML = `<span class="ok">✓ Doğru!</span>${meaning}`;
+    } else if (soundsSame) {
+      el.querySelector('.feedback').innerHTML = `
+        <span class="ok">✓ Doğru sayıldı!</span>
+        <p><strong>${esc(input.value.trim())}</strong> ile <strong>${esc(spoken(card.front))}</strong> aynı okunur;
+        bu kartın kelimesi <strong>${esc(spoken(card.front))}</strong>.</p>${meaning}`;
+    } else if (skipped) {
+      el.querySelector('.feedback').innerHTML = `
+        <span class="bad">Doğrusu: <strong>${esc(card.front)}</strong></span>${meaning}`;
+      el.querySelector('.answer-form .btn').focus();
+      say();
     } else {
       const { typed, expected } = diff(input.value, card.front);
       el.querySelector('.feedback').innerHTML = `
@@ -386,10 +423,17 @@ function dictation(el, pool) {
   function onClick(e) {
     const action = e.target.closest('[data-action]')?.dataset.action;
     if (action === 'restart') start();
+    else if (action === 'say') speak(e.target.closest('[data-action]').dataset.text);
     else if (action === 'speak' || action === 'slow') {
       say(action === 'slow' ? 0.6 : undefined);
       el.querySelector('input').focus();
-    }
+    } else if (checked) return;
+    else if (action === 'hint') {
+      const word = answers(queue[i].front)[0];
+      el.querySelector('.feedback').innerHTML =
+        `<span class="muted">İpucu: ${esc(word[0])}${' _'.repeat(word.length - 1)} (${word.length} harf)</span>`;
+      el.querySelector('input').focus();
+    } else if (action === 'skip') check(true);
   }
 
   // Space is needed for typing phrases, so Escape replays the word instead.

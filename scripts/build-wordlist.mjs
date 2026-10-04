@@ -52,9 +52,11 @@ const POS = {
 };
 const CONTENT_POS = new Set(['noun', 'verb', 'adj', 'adv']);
 
+// Shown on the (English) front, so in English. storage.js renames the old
+// Turkish labels on cards that were added before.
 const POS_LABEL = {
-  noun: 'isim', verb: 'fiil', adj: 'sıfat', adv: 'zarf', pron: 'zamir', det: 'belirleyici',
-  prep: 'edat', conj: 'bağlaç', num: 'sayı', intj: 'ünlem', particle: 'mastar',
+  noun: 'noun', verb: 'verb', adj: 'adjective', adv: 'adverb', pron: 'pronoun', det: 'determiner',
+  prep: 'preposition', conj: 'conjunction', num: 'number', intj: 'interjection', particle: 'particle',
 };
 const POS_DECK = { noun: 'İsimler', verb: 'Fiiller', adj: 'Sıfatlar', adv: 'Zarflar' };
 const OTHER_DECK = 'Diğer Kelimeler';
