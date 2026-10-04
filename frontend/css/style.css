@@ -516,6 +516,19 @@ a.hub-tile:active { transform: translateY(-1px); }
 .tile.selected { border-color: var(--primary); background: var(--new-bg); color: var(--new-text); }
 .tile.matched { cursor: default; opacity: 0.6; }
 
+.dictation-diff {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  gap: 4px 12px;
+  text-align: left;
+}
+.dictation-diff .word { font-size: 1.3rem; font-weight: 600; letter-spacing: 0.04em; overflow-wrap: anywhere; }
+.dictation-diff mark { border-radius: 3px; color: inherit; }
+.dictation-diff mark.extra { background: color-mix(in srgb, var(--danger) 20%, transparent); text-decoration: line-through; }
+.dictation-diff mark.miss { background: var(--ok-bg); color: var(--ok-text); text-decoration: underline; }
+.chips a.chip { text-decoration: none; }
+
 #practice-deck { max-width: 260px; }
 
 /* --- Mobile --- */

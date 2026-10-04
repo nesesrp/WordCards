@@ -8,12 +8,13 @@ function englishVoice() {
   return voices.find((v) => v.lang === 'en-US') ?? voices.find((v) => v.lang.startsWith('en'));
 }
 
-export function speak(text) {
+// `rate` below 1 reads more slowly (e.g. 0.6 for the "slow" button).
+export function speak(text, rate = 0.9) {
   if (!canSpeak || !text) return;
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = 'en-US';
   utterance.voice = englishVoice() ?? null;
-  utterance.rate = 0.9;
+  utterance.rate = rate;
   speechSynthesis.cancel();
   speechSynthesis.speak(utterance);
 }

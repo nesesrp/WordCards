@@ -1,5 +1,5 @@
-// Practice modes that reuse the user's cards: writing, listening and a
-// matching game. They don't change the spaced repetition schedule; each answer
+// Practice modes that reuse the user's cards: writing, listening, dictation
+// and a matching game. They don't change the spaced repetition schedule; each answer
 // only counts towards today's activity (and so the streak).
 
 import * as db from './storage.js';
@@ -12,6 +12,7 @@ const PAIRS = 6;
 export const MODES = {
   writing: { title: 'Yazma', intro: 'Türkçe anlamı gör, İngilizcesini yaz.', min: 1, run: writing },
   listening: { title: 'Dinleme', intro: 'Kelimeyi dinle, doğru anlamı seç.', min: 4, run: listening },
+  dictation: { title: 'Dinleme', intro: 'Kelimeyi dinle, duyduğunu yaz.', min: 1, run: dictation },
   game: { title: 'Eşleştirme Oyunu', intro: 'Kelimeleri anlamlarıyla eşleştir; ne kadar hızlı, o kadar iyi.', min: PAIRS, run: game },
 };
 
@@ -56,6 +57,11 @@ export async function renderPractice(root, mode) {
           </option>`).join('')}
       </select>
     </section>
+    ${mode === 'listening' || mode === 'dictation' ? `
+      <nav class="chips" aria-label="Dinleme türü">
+        <a class="chip ${mode === 'listening' ? 'active' : ''}" href="#/practice/listening">Anlamını seç</a>
+        <a class="chip ${mode === 'dictation' ? 'active' : ''}" href="#/practice/dictation">Duyduğunu yaz</a>
+      </nav>` : ''}
     <p class="muted">${config.intro}</p>
     <div id="practice"></div>`;
 
@@ -66,7 +72,7 @@ export async function renderPractice(root, mode) {
   });
 
   const el = root.querySelector('#practice');
-  if (mode === 'listening' && !canSpeak) {
+  if ((mode === 'listening' || mode === 'dictation') && !canSpeak) {
     el.innerHTML = `<p class="empty">Tarayıcın sesli okumayı desteklemiyor. Chrome, Edge ya da Safari'yi dene.</p>`;
     return null;
   }
@@ -96,6 +102,39 @@ function result(emoji, title, text) {
         <button class="btn primary" data-action="restart">Tekrar oyna</button>
       </div>
     </div>`;
+}
+
+// Compares what was typed with the closest right answer, letter by letter
+// (longest common subsequence). Returns both strings as HTML: letters typed by
+// mistake are marked in `typed`, letters that were missed in `expected`.
+function diff(input, front) {
+  const a = normalize(input);
+  let best;
+  for (const b of answers(front)) {
+    const t = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0));
+    for (let x = a.length - 1; x >= 0; x--) {
+      for (let y = b.length - 1; y >= 0; y--) {
+        t[x][y] = a[x] === b[y] ? t[x + 1][y + 1] + 1 : Math.max(t[x + 1][y], t[x][y + 1]);
+      }
+    }
+    if (!best || t[0][0] > best.t[0][0]) best = { b, t };
+  }
+  const { b, t } = best;
+  let typed = '';
+  let expected = '';
+  let x = 0;
+  let y = 0;
+  while (x < a.length || y < b.length) {
+    if (x < a.length && y < b.length && a[x] === b[y]) {
+      typed += esc(a[x++]);
+      expected += esc(b[y++]);
+    } else if (y < b.length && (x === a.length || t[x][y + 1] >= t[x + 1][y])) {
+      expected += `<mark class="miss">${esc(b[y++])}</mark>`;
+    } else {
+      typed += `<mark class="extra">${esc(a[x++])}</mark>`;
+    }
+  }
+  return { typed, expected };
 }
 
 const scoreEmoji = (score, total) => (score === total ? '🏆' : score >= total / 2 ? '👏' : '💪');
@@ -274,6 +313,97 @@ function listening(el, pool) {
 
   start();
   return listen(el, onClick, onKey);
+}
+
+// ---------------------------------------------------------------------------
+// Dictation: hear the English word, type what you heard
+// ---------------------------------------------------------------------------
+
+function dictation(el, pool) {
+  let queue, i, score, checked;
+
+  const say = (rate) => speak(spoken(queue[i].front), rate);
+
+  function start() {
+    queue = shuffle([...pool]).slice(0, ROUND);
+    i = 0;
+    score = 0;
+    show();
+  }
+
+  function show() {
+    if (i >= queue.length) {
+      el.innerHTML = result(scoreEmoji(score, queue.length), `${score} / ${queue.length}`,
+        'Duyduğunu yazmak hem kulağını hem yazımını geliştirir.');
+      return;
+    }
+    checked = false;
+    el.innerHTML = `
+      ${progress(i, queue.length)}
+      <div class="prompt-card">
+        <button type="button" class="btn primary big" data-action="speak">🔊 Tekrar dinle <kbd>Esc</kbd></button>
+        <button type="button" class="btn small" data-action="slow">🐢 Yavaş dinle</button>
+      </div>
+      <form class="answer-form" autocomplete="off">
+        <input name="answer" placeholder="Duyduğunu yaz" autocapitalize="off" spellcheck="false" aria-label="Cevabın">
+        <button class="btn primary">Kontrol et</button>
+      </form>
+      <div class="feedback" aria-live="polite"></div>`;
+    el.querySelector('input').focus();
+    say();
+  }
+
+  async function check() {
+    const card = queue[i];
+    const input = el.querySelector('input');
+    if (!input.value.trim()) return;
+    checked = true;
+    const ok = answers(card.front).includes(normalize(input.value));
+    if (ok) score++;
+    input.readOnly = true;
+    el.querySelector('.answer-form .btn').textContent = 'Devam →';
+    const meaning = `<p class="muted">${esc(card.front)} = ${esc(card.back)}</p>`;
+    if (ok) {
+      el.querySelector('.feedback').innerHTML = `<span class="ok">✓ Doğru!</span>${meaning}`;
+    } else {
+      const { typed, expected } = diff(input.value, card.front);
+      el.querySelector('.feedback').innerHTML = `
+        <div class="dictation-diff">
+          <span class="muted small">Senin yazdığın</span><span class="word">${typed}</span>
+          <span class="muted small">Doğrusu</span><span class="word">${expected}</span>
+        </div>
+        ${meaning}`;
+    }
+    await db.logActivity();
+  }
+
+  function onSubmit(e) {
+    e.preventDefault();
+    if (!checked) check();
+    else { i++; show(); }
+  }
+
+  function onClick(e) {
+    const action = e.target.closest('[data-action]')?.dataset.action;
+    if (action === 'restart') start();
+    else if (action === 'speak' || action === 'slow') {
+      say(action === 'slow' ? 0.6 : undefined);
+      el.querySelector('input').focus();
+    }
+  }
+
+  // Space is needed for typing phrases, so Escape replays the word instead.
+  function onKey(e) {
+    if (i < queue.length && e.key === 'Escape') say();
+  }
+
+  el.addEventListener('submit', onSubmit);
+  const stop = listen(el, onClick, onKey);
+  start();
+  return () => {
+    el.removeEventListener('submit', onSubmit);
+    stop();
+  };
 }
 
 // ---------------------------------------------------------------------------
