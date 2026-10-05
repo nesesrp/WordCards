@@ -4,8 +4,9 @@ A flashcard app for learning vocabulary with spaced repetition.
 
 ## Features
 
-- **Home page:** the entry point to every way of practising: Kelime (Vocabulary), Yazma (Writing), Dinleme (Listening), Oyun (Game) and Okuma (Reading, coming soon)
+- **Home page:** the entry point to every way of practising: Kelime (Vocabulary), Yazma (Writing), Dinleme (Listening), Okuma (Reading) and Oyun (Game)
 - **Practice modes:** use your own cards, from all decks or one deck. *Writing:* see the Turkish meaning, type the English word. *Listening:* hear the word (browser speech synthesis, no audio files) and either pick its meaning or type what you heard (dictation). Dictation has slow replay, a hint and an "I don't know" button, accepts words that sound the same (e.g. *their* for *there*), and after a wrong answer marks the extra and missing letters. Both listening modes list the missed words at the end of a round. *Game:* match words with their meanings against the clock. Practice doesn't change the spaced repetition schedule but counts towards the daily streak
+- **Reading:** 189 news texts, each in three versions (Kolay, Orta, Zor) with an estimated CEFR level. Tap a word to see its meaning from the word list (inflected forms like "went" or "cities" are found too) and add it to the "Okuma Kelimeleri" deck. Words already in your decks are underlined. The text can be read aloud sentence by sentence, and finished texts are marked as read. See [Reading texts](#reading-texts)
 - **Decks:** create, rename and delete decks (e.g. "English Verbs", "Spanish Food")
 - **CEFR levels:** every deck can have a level (A1, A2, B1, B2, C1, C2). The home page can be filtered by level
 - **Ready-made decks:** the "Hazır" page has about 9,800 English → Turkish words in 230+ decks, split by level, then by topic (e.g. "Yiyecek ve İçecek") or by part of speech ("Fiiller 1", "Fiiller 2"…). Pick your level and add a deck, or all decks of that level, with one click. See [Word lists](#word-lists)
@@ -37,13 +38,17 @@ frontend/
   js/app.js       # routing and views (UI)
   js/practice.js  # writing, listening, dictation and matching game modes
   js/speech.js    # English pronunciation (Web Speech API)
+  js/reading.js   # reading page: texts, word lookup, reading aloud
+  js/lemmas.js    # dictionary forms of inflected words ("went" → "go")
   js/homophones.js  # words that sound the same, accepted in dictation
   js/util.js      # shared helpers
   js/storage.js   # data layer (localStorage for now)
   js/presets.js   # CEFR levels; loads the ready-made decks
   data/wordlist.json  # ready-made decks (generated, see below)
+  data/texts/         # reading texts (generated, see below)
 scripts/
   build-wordlist.mjs  # builds frontend/data/wordlist.json
+  build-texts.mjs     # builds frontend/data/texts/
   overrides.json      # hand-made translation fixes
   js/srs.js       # spaced repetition algorithm
   js/stats.js     # streak and activity calculations
@@ -119,3 +124,18 @@ Planned API:
 **Frontend migration:** only `frontend/js/storage.js` needs to change. Its functions are already async, so their bodies will be replaced with `fetch('/api/...')` calls and the rest of the UI code stays as it is.
 
 **Later:** user accounts (so each user has their own decks), and importing/exporting decks.
+
+## Reading texts
+
+`frontend/data/texts/` is generated from the [OneStopEnglish corpus](https://github.com/nishkalavallabhi/OneStopEnglishCorpus) (Vajjala & Lučić, 2018), which is licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). The generated texts are under the same license. To rebuild them (run `build-wordlist.mjs` first, as its downloads are reused):
+
+```bash
+node scripts/build-texts.mjs
+```
+
+What the script does:
+
+- **Cleans the text:** the source files are in Windows-1252 or Mac Roman, not UTF-8, and were copied from PDFs, so line breaks are joined and the lost ligatures are put back ("the  rst" → "the first", "dif cult" → "difficult") using the word lists as a dictionary
+- **Estimates a CEFR level** for each version: the lowest level whose words make up 97% of the words that are in the CEFR-J / Octanove lists. Names and topic words that aren't in the lists are left out. The "easy" versions come out mostly B1, the "hard" ones mostly B2
+- **Writes** `index.json` (titles, summaries, levels, word counts) and one file per text, so the reading page only loads what is being read
+

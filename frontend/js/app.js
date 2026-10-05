@@ -3,6 +3,7 @@ import { review, isDue, isLearned, dueLabel, LEARNED_BOX } from './srs.js';
 import { currentStreak, longestStreak, lastNDays, dateKey } from './stats.js';
 import { LEVELS, levelName, loadPresets } from './presets.js';
 import { renderPractice } from './practice.js';
+import { renderReadingList, renderReader } from './reading.js';
 import { esc, shuffle } from './util.js';
 
 const app = document.getElementById('app');
@@ -27,7 +28,7 @@ const levelChips = (active, counts, { all = true } = {}) => `
 
 // ---------------------------------------------------------------------------
 // Routing (#/ , #/decks , #/deck/:id , #/study/:id[/all] , #/practice/:mode ,
-// #/library , #/stats)
+// #/reading[/:id[/:version]] , #/library , #/stats)
 // ---------------------------------------------------------------------------
 
 const routes = [
@@ -35,6 +36,12 @@ const routes = [
   [/^#\/decks$/, renderDecks],
   [/^#\/practice\/(writing|listening|dictation|game)$/, async (mode) => {
     cleanup = await renderPractice(app, mode);
+  }],
+  [/^#\/reading$/, async () => {
+    cleanup = await renderReadingList(app);
+  }],
+  [/^#\/reading\/([\w-]+)(?:\/(ele|int|adv))?$/, async (id, version) => {
+    cleanup = await renderReader(app, id, version);
   }],
   [/^#\/deck\/([\w-]+)$/, renderDeck],
   [/^#\/study\/([\w-]+)(?:\/(all))?$/, renderStudy],
@@ -117,7 +124,7 @@ async function renderHub() {
         href: '#/decks', icon: '🗂️', title: 'Vocabulary', color: 'indigo',
         badge: due ? { text: due, title: `${due} kart tekrar bekliyor` } : null,
       })}
-      ${tile({ icon: '📖', title: 'Reading', color: 'teal', badge: soon })}
+      ${tile({ href: '#/reading', icon: '📖', title: 'Reading', color: 'teal' })}
       ${tile({ icon: '🎙️', title: 'Podcast', color: 'pink', badge: soon })}
       ${tile({ href: '#/practice/game', icon: '🎮', title: 'Game', color: 'green' })}
     </div>`;
