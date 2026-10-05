@@ -14,6 +14,7 @@ A flashcard app for learning vocabulary with spaced repetition.
 - **Spaced repetition:** uses the Leitner box system. A card you know comes back after 1, 3, 7, 16 and then 35 days. A card you miss goes back to the first box and shows up again later in the same session
 - **Progress:** cards learned, daily streak, longest streak and activity for the last 14 days
 - **Persistent data:** stored in the browser's `localStorage` for now
+- **Backup:** the "İlerleme" page can download all decks, cards and progress as a JSON file and restore them from it (this replaces the current data). It reminds you if you haven't made a backup in 14 days
 
 ## Running the frontend
 

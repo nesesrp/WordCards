@@ -367,6 +367,9 @@ input:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
 .deck-progress { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
 .deck-progress li { display: grid; grid-template-columns: minmax(0, 1fr) 2fr auto; align-items: center; gap: 12px; }
 .deck-progress a { text-decoration: none; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.backup p { margin: 0 0 12px; }
+.backup-remind { color: var(--warn-text); background: var(--warn-bg); padding: 8px 12px; border-radius: 10px; font-weight: 600; }
+.backup-status { min-height: 1.5em; margin-top: 12px; }
 .note { margin-top: 32px; }
 
 /* --- Home (hub) --- */

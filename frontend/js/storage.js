@@ -165,3 +165,36 @@ export async function logActivity(count = 1) {
 export async function getActivity() {
   return read().activity;
 }
+
+// --- Backup ---
+
+const BACKUP_APP = 'wordcards';
+
+// Everything the user has, as a plain object to save to a file.
+export async function exportBackup() {
+  const state = read();
+  state.settings.lastBackup = Date.now();
+  write(state);
+  return { app: BACKUP_APP, version: 1, exportedAt: new Date().toISOString(), data: state };
+}
+
+const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+const isText = (v) => typeof v === 'string';
+
+// Replaces all data with a backup made by exportBackup(). Throws an Error with a
+// Turkish message (shown to the user) if the file isn't a valid backup.
+export async function importBackup(backup) {
+  const data = backup?.app === BACKUP_APP ? backup.data : null;
+  const valid = isObject(data)
+    && Array.isArray(data.decks) && data.decks.every((d) => isObject(d) && isText(d.id) && isText(d.name))
+    && Array.isArray(data.cards) && data.cards.every((c) =>
+      isObject(c) && isText(c.id) && isText(c.deckId) && isText(c.front) && isText(c.back))
+    && (data.activity === undefined || isObject(data.activity))
+    && (data.settings === undefined || isObject(data.settings));
+  if (!valid) throw new Error('Bu dosya bir WordCards yedeği değil ya da bozuk.');
+  if (backup.version > 1) throw new Error('Bu yedek uygulamanın daha yeni bir sürümüyle alınmış.');
+  // Older backups may still have Turkish part-of-speech labels.
+  write(migrate({ ...emptyState(), ...data }));
+  return { decks: data.decks.length, cards: data.cards.length };
+}
+

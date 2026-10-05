@@ -568,8 +568,8 @@ function presetTile(preset, deck) {
 // ---------------------------------------------------------------------------
 
 async function renderStats() {
-  const [decks, cards, activity] = await Promise.all([
-    db.getDecks(), db.getAllCards(), db.getActivity(),
+  const [decks, cards, activity, settings] = await Promise.all([
+    db.getDecks(), db.getAllCards(), db.getActivity(), db.getSettings(),
   ]);
   const now = Date.now();
   const learned = cards.filter(isLearned).length;
@@ -618,5 +618,84 @@ async function renderStats() {
       }).join('')}
     </ul>` : '<p class="empty">Henüz deste yok.</p>'}
 
-    <p class="muted small note">Bir kart üst üste ${LEARNED_BOX} kez bilindiğinde "öğrenildi" sayılır.</p>`;
+    <p class="muted small note">Bir kart üst üste ${LEARNED_BOX} kez bilindiğinde "öğrenildi" sayılır.</p>
+
+    ${backupSection(settings.lastBackup, cards.length, now)}`;
+
+  setupBackup(app.querySelector('.backup'));
+}
+
+// ---------------------------------------------------------------------------
+// Backup: download all data as a file, or restore it from one
+// ---------------------------------------------------------------------------
+
+const BACKUP_REMIND_DAYS = 14;
+
+function backupSection(lastBackup, cardCount, now) {
+  const days = lastBackup ? Math.floor((now - lastBackup) / 86_400_000) : null;
+  const when = days === null ? 'Henüz yedek almadın.'
+    : days === 0 ? 'Son yedek: bugün'
+    : days === 1 ? 'Son yedek: dün'
+    : `Son yedek: ${days} gün önce`;
+  const remind = cardCount > 0 && (days === null || days >= BACKUP_REMIND_DAYS);
+  return `
+    <h2 class="section-title">Yedekleme</h2>
+    <div class="backup">
+      <p class="muted">Kartların ve ilerlemen sadece bu tarayıcıda saklanıyor. Tarayıcı verilerini silersen
+        ya da başka bir cihaza geçersen kaybolur. Ara sıra yedek alıp dosyayı güvenli bir yerde sakla.</p>
+      <p class="${remind ? 'backup-remind' : 'muted small'}">${remind ? '⚠️ ' : ''}${when}</p>
+      <div class="head-actions">
+        <button class="btn primary" data-action="export">⬇️ Yedeği indir</button>
+        <button class="btn" data-action="import">⬆️ Yedekten yükle</button>
+        <input type="file" accept=".json,application/json" hidden>
+      </div>
+      <p class="backup-status" aria-live="polite"></p>
+    </div>`;
+}
+
+function setupBackup(el) {
+  const input = el.querySelector('input[type="file"]');
+  el.addEventListener('click', async (e) => {
+    const action = e.target.closest('[data-action]')?.dataset.action;
+    if (action === 'import') input.click();
+    if (action !== 'export') return;
+    const backup = await db.exportBackup();
+    const url = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `wordcards-yedek-${dateKey(Date.now())}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    await renderStats();
+    backupStatus('Yedek indirildi. Dosyayı güvenli bir yere (ör. Google Drive) kaydet.', true);
+  });
+
+  input.addEventListener('change', async () => {
+    const file = input.files[0];
+    input.value = '';
+    if (!file) return;
+    let backup;
+    try {
+      backup = JSON.parse(await file.text());
+    } catch {
+      backupStatus('Dosya okunamadı. Bir WordCards yedeği (.json) seç.', false);
+      return;
+    }
+    const cards = Array.isArray(backup?.data?.cards) ? backup.data.cards.length : 0;
+    if (!confirm(`Şu anki bütün destelerin ve ilerlemen silinip yerine yedekteki ${cards} kart yüklenecek. Devam edilsin mi?`)) return;
+    try {
+      const result = await db.importBackup(backup);
+      await renderStats();
+      await updateNav(location.hash);
+      backupStatus(`Yedek yüklendi: ${result.decks} deste, ${result.cards} kart.`, true);
+    } catch (err) {
+      backupStatus(err.message, false);
+    }
+  });
+}
+
+// Shows a message under the backup buttons (also after the page re-renders).
+function backupStatus(text, ok) {
+  const el = app.querySelector('.backup-status');
+  if (el) el.innerHTML = `<span class="${ok ? 'ok' : 'bad'}">${esc(text)}</span>`;
 }
