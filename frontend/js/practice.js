@@ -11,10 +11,10 @@ const ROUND = 10;
 const PAIRS = 6;
 
 export const MODES = {
-  writing: { title: 'Yazma', intro: 'Türkçe anlamı gör, İngilizcesini yaz.', min: 1, run: writing },
-  listening: { title: 'Dinleme', intro: 'Kelimeyi dinle, doğru anlamı seç.', min: 4, run: listening },
-  dictation: { title: 'Dinleme', intro: 'Kelimeyi dinle, duyduğunu yaz.', min: 1, run: dictation },
-  game: { title: 'Eşleştirme Oyunu', intro: 'Kelimeleri anlamlarıyla eşleştir; ne kadar hızlı, o kadar iyi.', min: PAIRS, run: game },
+  writing: { title: 'Writing', intro: 'Türkçe anlamı gör, İngilizcesini yaz.', min: 1, run: writing },
+  listening: { title: 'Listening', intro: 'Kelimeyi dinle, doğru anlamı seç.', min: 4, run: listening },
+  dictation: { title: 'Listening', intro: 'Kelimeyi dinle, duyduğunu yaz.', min: 1, run: dictation },
+  game: { title: 'Game', intro: 'Kelimeleri anlamlarıyla eşleştir; ne kadar hızlı, o kadar iyi.', min: PAIRS, run: game },
 };
 
 // Fronts of ready-made cards can look like "airplane / aeroplane" or

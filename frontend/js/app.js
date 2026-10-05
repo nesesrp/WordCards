@@ -118,10 +118,10 @@ async function renderHub() {
         <a class="btn primary" href="#/library">📚 Hazır desteler</a>`}
     </section>
     <div class="hub-grid">
-      ${tile({ href: '#/practice/listening', icon: '🎧', title: 'Listening', color: 'violet' })}
+      ${tile({ href: '#/practice/listening', icon: '🎧', title: 'Listening', color: 'sky' })}
       ${tile({ href: '#/practice/writing', icon: '✍️', title: 'Writing', color: 'orange' })}
       ${tile({
-        href: '#/decks', icon: '🗂️', title: 'Vocabulary', color: 'indigo',
+        href: '#/decks', icon: '🗂️', title: 'Vocabulary', color: 'slate',
         badge: due ? { text: due, title: `${due} kart tekrar bekliyor` } : null,
       })}
       ${tile({ href: '#/reading', icon: '📖', title: 'Reading', color: 'teal' })}

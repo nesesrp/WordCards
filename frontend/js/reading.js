@@ -57,7 +57,7 @@ export async function renderReadingList(root) {
     data = await loadIndex();
   } catch {
     root.innerHTML = `
-      <section class="page-head"><h1>Okuma</h1></section>
+      <section class="page-head"><h1>Reading</h1></section>
       <p class="empty">Metinler yüklenemedi. Sayfayı yenileyip tekrar dene.</p>`;
     return null;
   }
@@ -69,7 +69,7 @@ export async function renderReadingList(root) {
   root.innerHTML = `
     <a href="#/" class="back">← Ana sayfa</a>
     <section class="page-head">
-      <h1>Okuma</h1>
+      <h1>Reading</h1>
       <input type="search" id="text-search" placeholder="Metin ara" aria-label="Metin ara">
     </section>
     <p class="muted">Her metnin üç hâli var. Bilmediğin kelimeye dokun; anlamını gör, destene ekle.</p>
@@ -174,7 +174,7 @@ export async function renderReader(root, id, versionId = 'ele') {
     [data, text] = await Promise.all([loadIndex(), loadText(id)]);
   } catch {
     root.innerHTML = `
-      <a href="#/reading" class="back">← Okuma</a>
+      <a href="#/reading" class="back">← Reading</a>
       <p class="empty">Bu metin yüklenemedi.</p>`;
     return null;
   }
@@ -193,7 +193,7 @@ export async function renderReader(root, id, versionId = 'ele') {
   }).join(' ')}</p>`).join('');
 
   root.innerHTML = `
-    <a href="#/reading" class="back">← Okuma</a>
+    <a href="#/reading" class="back">← Reading</a>
     <section class="page-head">
       <h1>${esc(text.title)}</h1>
       ${canSpeak ? '<button class="btn" data-action="listen">🔊 Metni dinle</button>' : ''}
