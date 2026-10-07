@@ -4,6 +4,7 @@ import { currentStreak, longestStreak, lastNDays, dateKey } from './stats.js';
 import { LEVELS, levelName, loadPresets } from './presets.js';
 import { renderPractice } from './practice.js';
 import { renderReadingList, renderReader } from './reading.js';
+import { renderPodcastList, renderEpisode } from './podcast.js';
 import { esc, shuffle } from './util.js';
 
 const app = document.getElementById('app');
@@ -28,7 +29,7 @@ const levelChips = (active, counts, { all = true } = {}) => `
 
 // ---------------------------------------------------------------------------
 // Routing (#/ , #/decks , #/deck/:id , #/study/:id[/all] , #/practice/:mode ,
-// #/reading[/:id[/:version]] , #/library , #/stats)
+// #/reading[/:id[/:version]] , #/podcast[/:id] , #/library , #/stats)
 // ---------------------------------------------------------------------------
 
 const routes = [
@@ -42,6 +43,12 @@ const routes = [
   }],
   [/^#\/reading\/([\w-]+)(?:\/(ele|int|adv))?$/, async (id, version) => {
     cleanup = await renderReader(app, id, version);
+  }],
+  [/^#\/podcast$/, async () => {
+    cleanup = await renderPodcastList(app);
+  }],
+  [/^#\/podcast\/([\w-]+)$/, async (id) => {
+    cleanup = await renderEpisode(app, id);
   }],
   [/^#\/deck\/([\w-]+)$/, renderDeck],
   [/^#\/study\/([\w-]+)(?:\/(all))?$/, renderStudy],
@@ -103,7 +110,6 @@ async function renderHub() {
       <span class="hub-icon" aria-hidden="true">${icon}</span>
       <span class="hub-title">${title}</span>
     </${href ? 'a' : 'div'}>`;
-  const soon = { text: 'Soon', title: 'Yakında' };
 
   app.innerHTML = `
     <section class="hero">
@@ -125,7 +131,7 @@ async function renderHub() {
         badge: due ? { text: due, title: `${due} kart tekrar bekliyor` } : null,
       })}
       ${tile({ href: '#/reading', icon: '📖', title: 'Reading', color: 'teal' })}
-      ${tile({ icon: '🎙️', title: 'Podcast', color: 'pink', badge: soon })}
+      ${tile({ href: '#/podcast', icon: '🎙️', title: 'Podcast', color: 'pink' })}
       ${tile({ href: '#/practice/game', icon: '🎮', title: 'Game', color: 'green' })}
     </div>`;
 }
