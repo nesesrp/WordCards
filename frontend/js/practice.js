@@ -1,10 +1,10 @@
-// Practice modes that reuse the user's cards: writing, listening, dictation
-// and a matching game. They don't change the spaced repetition schedule; each answer
+// Practice modes that reuse the user's cards: writing, listening, dictation,
+// speaking and a matching game. They don't change the spaced repetition schedule; each answer
 // only counts towards today's activity (and so the streak).
 
 import * as db from './storage.js';
 import { esc, shuffle } from './util.js';
-import { canSpeak, speak } from './speech.js';
+import { canRecognize, canSpeak, recognize, speak } from './speech.js';
 import { homophones } from './homophones.js';
 
 const ROUND = 10;
@@ -14,6 +14,7 @@ export const MODES = {
   writing: { title: 'Writing', intro: 'Türkçe anlamı gör, İngilizcesini yaz.', min: 1, run: writing },
   listening: { title: 'Listening', intro: 'Kelimeyi dinle, doğru anlamı seç.', min: 4, run: listening },
   dictation: { title: 'Listening', intro: 'Kelimeyi dinle, duyduğunu yaz.', min: 1, run: dictation },
+  speaking: { title: 'Speaking', intro: 'Kelimeyi sesli söyle; telaffuzun anlaşılıyor mu, görelim.', min: 1, run: speaking },
   game: { title: 'Game', intro: 'Kelimeleri anlamlarıyla eşleştir; ne kadar hızlı, o kadar iyi.', min: PAIRS, run: game },
 };
 
@@ -75,6 +76,10 @@ export async function renderPractice(root, mode) {
   const el = root.querySelector('#practice');
   if ((mode === 'listening' || mode === 'dictation') && !canSpeak) {
     el.innerHTML = `<p class="empty">Tarayıcın sesli okumayı desteklemiyor. Chrome, Edge ya da Safari'yi dene.</p>`;
+    return null;
+  }
+  if (mode === 'speaking' && !canRecognize) {
+    el.innerHTML = `<p class="empty">Tarayıcın konuşma tanımayı desteklemiyor. Chrome, Edge ya da Safari'yi dene.</p>`;
     return null;
   }
   if (pool.length < config.min) {
@@ -447,6 +452,188 @@ function dictation(el, pool) {
   return () => {
     el.removeEventListener('submit', onSubmit);
     stop();
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Speaking: see the English word, say it out loud
+// ---------------------------------------------------------------------------
+
+const TRIES = 3;
+const NUMBERS = 'zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty'.split(' ');
+
+// What the recognizer heard, in the form the answers are written in:
+// "Ice-cream." → "ice cream", "7" → "seven".
+const heardForm = (s) => normalize(s)
+  .replace(/[.,!?;:"]/g, '')
+  .replace(/-/g, ' ')
+  .replace(/\b\d+\b/g, (n) => NUMBERS[n] ?? n);
+
+// The recognizer often adds words ("an apple", "I go"), so the answer only
+// has to appear among them. Words that sound the same count, because they
+// can't be told apart by ear either.
+function saidRight(transcripts, front) {
+  const targets = answers(front).flatMap((w) => [w, ...homophones(w)]).map(heardForm);
+  return transcripts.some((t) => {
+    const said = ` ${heardForm(t)} `;
+    return targets.some((w) => said.includes(` ${w} `));
+  });
+}
+
+const RECOGNITION_ERRORS = {
+  'no-speech': 'Ses duyulmadı. Mikrofona yakın konuşup tekrar dene.',
+  'audio-capture': 'Mikrofon bulunamadı.',
+  'not-allowed': 'Mikrofon izni verilmedi. Adres çubuğundaki simgeden izin verip tekrar dene.',
+  'service-not-allowed': 'Mikrofon izni verilmedi. Adres çubuğundaki simgeden izin verip tekrar dene.',
+  network: 'Konuşma tanıma için internet bağlantısı gerekiyor.',
+};
+
+function speaking(el, pool) {
+  let queue, i, score, tries, resolved, missed, stopListening;
+
+  const say = () => canSpeak && speak(spoken(queue[i].front));
+
+  function stop() {
+    stopListening?.();
+    stopListening = null;
+  }
+
+  function start() {
+    queue = shuffle([...pool]).slice(0, ROUND);
+    i = 0;
+    score = 0;
+    missed = [];
+    show();
+  }
+
+  function show() {
+    stop();
+    if (i >= queue.length) {
+      el.innerHTML = result(scoreEmoji(score, queue.length), `${score} / ${queue.length}`,
+        'Sesli tekrar ettiğin kelimeleri konuşurken daha kolay hatırlarsın.', missed);
+      return;
+    }
+    tries = 0;
+    resolved = false;
+    const card = queue[i];
+    el.innerHTML = `
+      ${progress(i, queue.length)}
+      <div class="prompt-card">
+        <span class="hint">Sesli söyle</span>
+        <p class="prompt">${esc(card.front)}</p>
+        <p class="muted">${esc(card.back)}</p>
+        ${canSpeak ? `<button type="button" class="btn small" data-action="speak">🔊 Önce dinle</button>` : ''}
+      </div>
+      <p class="center"><button type="button" class="btn primary big mic" data-action="mic">🎤 Söyle <kbd>Boşluk</kbd></button></p>
+      <div class="feedback" aria-live="polite"></div>
+      <p class="center practice-help"><button type="button" class="btn small" data-action="skip">Geç</button></p>`;
+  }
+
+  function setMic(listening) {
+    const mic = el.querySelector('.mic');
+    mic.classList.toggle('recording', listening);
+    mic.innerHTML = listening ? '● Dinliyorum… <kbd>Boşluk</kbd>' : '🎤 Söyle <kbd>Boşluk</kbd>';
+  }
+
+  function toggleMic() {
+    if (resolved) return;
+    if (stopListening) {
+      stop();
+      setMic(false);
+      return;
+    }
+    el.querySelector('.feedback').innerHTML = '';
+    setMic(true);
+    stopListening = recognize({
+      onResult: (transcripts) => {
+        stopListening = null;
+        setMic(false);
+        heard(transcripts);
+      },
+      onError: (code) => {
+        stopListening = null;
+        setMic(false);
+        el.querySelector('.feedback').innerHTML =
+          `<span class="bad">${RECOGNITION_ERRORS[code] ?? 'Konuşma tanıma çalışmadı. Tekrar dene.'}</span>`;
+      },
+    });
+  }
+
+  function heard(transcripts) {
+    const card = queue[i];
+    tries++;
+    if (saidRight(transcripts, card.front)) {
+      score++;
+      resolve(`<span class="ok">✓ ${tries === 1 ? 'Harika, anlaşıldı!' : 'Bu sefer anlaşıldı!'}</span>`);
+      return;
+    }
+    const what = `<p>Duyulan: <strong>“${esc(transcripts[0])}”</strong></p>`;
+    if (tries >= TRIES) {
+      missed.push(card);
+      resolve(`<span class="bad">✗ Doğrusunu dinle ve sonra tekrar çalış.</span>${what}`);
+      say();
+      return;
+    }
+    const left = TRIES - tries;
+    el.querySelector('.feedback').innerHTML = `
+      <span class="bad">Tam anlaşılmadı.</span>${what}
+      <p class="muted small">Önce 🔊 ile dinle, sonra yavaşça tekrar söyle (${left} hakkın kaldı).</p>`;
+  }
+
+  async function resolve(feedback) {
+    resolved = true;
+    const card = queue[i];
+    el.querySelector('.mic').hidden = true;
+    el.querySelector('.practice-help').hidden = true;
+    el.querySelector('.feedback').innerHTML = `
+      ${feedback}
+      <p class="muted">${esc(card.front)} = ${esc(card.back)}</p>
+      <p><button class="btn primary" data-action="next">Devam → <kbd>Enter</kbd></button></p>`;
+    el.querySelector('[data-action="next"]').focus();
+    await db.logActivity();
+  }
+
+  function next() {
+    if (!resolved) return;
+    i++;
+    show();
+  }
+
+  function onClick(e) {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    if (action === 'restart') start();
+    else if (action === 'say') speak(btn.dataset.text);
+    else if (action === 'speak') {
+      stop();
+      setMic(false);
+      say();
+    } else if (action === 'mic') toggleMic();
+    else if (action === 'next') next();
+    else if (action === 'skip' && !resolved) {
+      stop();
+      missed.push(queue[i]);
+      resolve(`<span class="bad">Geçtin. Doğrusunu dinle:</span>`);
+      say();
+    }
+  }
+
+  function onKey(e) {
+    if (i >= queue.length) return;
+    if (e.key === ' ' && !resolved) {
+      e.preventDefault();
+      toggleMic();
+    } else if (e.key === 'Enter' && resolved && !e.target.closest?.('button')) {
+      next();
+    }
+  }
+
+  start();
+  const stopEvents = listen(el, onClick, onKey);
+  return () => {
+    stop();
+    stopEvents();
   };
 }
 

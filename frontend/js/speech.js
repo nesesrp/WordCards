@@ -99,3 +99,43 @@ export function speakAll(sentences, onSentence, rate = 0.9) {
 export function stopSpeaking() {
   if (canSpeak) interrupt();
 }
+
+// ---------------------------------------------------------------------------
+// Speech recognition, for the speaking mode. Chrome and Edge send the audio to
+// their servers, so it needs a connection; Firefox doesn't support it.
+// ---------------------------------------------------------------------------
+
+const Recognition = window.SpeechRecognition ?? window.webkitSpeechRecognition;
+export const canRecognize = Boolean(Recognition);
+
+// Listens for one English utterance. Calls either onResult(transcripts), with
+// the recognizer's guesses best first, or onError(code), e.g. "no-speech",
+// "not-allowed" or "network". Returns a function that stops listening without
+// calling either.
+export function recognize({ onResult, onError }) {
+  // The model voice must not be picked up by the microphone.
+  stopSpeaking();
+  const r = new Recognition();
+  r.lang = 'en-US';
+  r.interimResults = false;
+  r.maxAlternatives = 5;
+  let done = false;
+  const settle = (fn) => {
+    if (done) return;
+    done = true;
+    fn();
+  };
+  r.onresult = (e) => settle(() => onResult(Array.from(e.results[0], (a) => a.transcript)));
+  r.onerror = (e) => settle(() => onError(e.error));
+  // Safari sometimes ends without a result or an error when nothing was said.
+  r.onend = () => settle(() => onError('no-speech'));
+  try {
+    r.start();
+  } catch {
+    settle(() => onError('start'));
+  }
+  return () => {
+    done = true;
+    r.abort();
+  };
+}

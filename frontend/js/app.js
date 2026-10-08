@@ -35,7 +35,7 @@ const levelChips = (active, counts, { all = true } = {}) => `
 const routes = [
   [/^#\/?$/, renderHub],
   [/^#\/decks$/, renderDecks],
-  [/^#\/practice\/(writing|listening|dictation|game)$/, async (mode) => {
+  [/^#\/practice\/(writing|listening|dictation|speaking|game)$/, async (mode) => {
     cleanup = await renderPractice(app, mode);
   }],
   [/^#\/reading$/, async () => {
@@ -125,6 +125,7 @@ async function renderHub() {
     </section>
     <div class="hub-grid">
       ${tile({ href: '#/practice/listening', icon: '🎧', title: 'Listening', color: 'sky' })}
+      ${tile({ href: '#/practice/speaking', icon: '🎤', title: 'Speaking', color: 'violet' })}
       ${tile({ href: '#/practice/writing', icon: '✍️', title: 'Writing', color: 'orange' })}
       ${tile({
         href: '#/decks', icon: '🗂️', title: 'Vocabulary', color: 'slate',

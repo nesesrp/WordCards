@@ -4,8 +4,8 @@ A flashcard app for learning vocabulary with spaced repetition.
 
 ## Features
 
-- **Home page:** the entry point to every way of practising: Kelime (Vocabulary), Yazma (Writing), Dinleme (Listening), Okuma (Reading), Podcast and Oyun (Game)
-- **Practice modes:** use your own cards, from all decks or one deck. *Writing:* see the Turkish meaning, type the English word. *Listening:* hear the word (browser speech synthesis, no audio files) and either pick its meaning or type what you heard (dictation). Dictation has slow replay, a hint and an "I don't know" button, accepts words that sound the same (e.g. *their* for *there*), and after a wrong answer marks the extra and missing letters. Both listening modes list the missed words at the end of a round. *Game:* match words with their meanings against the clock. Practice doesn't change the spaced repetition schedule but counts towards the daily streak
+- **Home page:** the entry point to every way of practising: Kelime (Vocabulary), Yazma (Writing), Dinleme (Listening), Konuşma (Speaking), Okuma (Reading), Podcast and Oyun (Game)
+- **Practice modes:** use your own cards, from all decks or one deck. *Writing:* see the Turkish meaning, type the English word. *Listening:* hear the word (browser speech synthesis, no audio files) and either pick its meaning or type what you heard (dictation). Dictation has slow replay, a hint and an "I don't know" button, accepts words that sound the same (e.g. *their* for *there*), and after a wrong answer marks the extra and missing letters. Both listening modes list the missed words at the end of a round. *Speaking:* see a word and say it out loud; the browser's speech recognition checks whether it was understood. It is lenient about extra words ("an apple") and words that sound the same, and gives three tries per word, with a button to hear the word first. Speech recognition works in Chrome, Edge and Safari (Chrome and Edge need an internet connection, because the audio is recognized on their servers). *Game:* match words with their meanings against the clock. Practice doesn't change the spaced repetition schedule but counts towards the daily streak
 - **Reading:** 189 news texts, each in three versions (Kolay, Orta, Zor) with an estimated CEFR level. Tap a word to see its meaning from the word list (inflected forms like "went" or "cities" are found too) and add it to the "Okuma Kelimeleri" deck. Words already in your decks are underlined. The text can be read aloud sentence by sentence, and finished texts are marked as read. See [Reading texts](#reading-texts)
 - **Podcast:** 10 short episodes (A1–B2) in which two hosts, Sam and Alex, talk about everyday topics. They are read aloud with two different browser voices, so there are no audio files. The transcript starts hidden; its words can be tapped like on the reading page and added to the "Podcast Kelimeleri" deck. Playback can go back or forward a sentence, start from any line and run at 0.75x, 1x or 1.25x. Each episode ends with comprehension questions. The episodes are written for this app and live in `frontend/data/podcasts.json`
 - **Decks:** create, rename and delete decks (e.g. "English Verbs", "Spanish Food")
@@ -37,8 +37,8 @@ frontend/
   index.html
   css/style.css
   js/app.js       # routing and views (UI)
-  js/practice.js  # writing, listening, dictation and matching game modes
-  js/speech.js    # English pronunciation (Web Speech API)
+  js/practice.js  # writing, listening, dictation, speaking and matching game modes
+  js/speech.js    # English pronunciation and speech recognition (Web Speech API)
   js/reading.js   # reading page: texts, reading aloud
   js/podcast.js   # podcast page: episodes, player, questions
   js/wordsheet.js # tap a word to see its meaning and add it to a deck
