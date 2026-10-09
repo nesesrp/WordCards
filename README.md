@@ -15,6 +15,7 @@ A flashcard app for learning vocabulary with spaced repetition.
 - **Study mode:** flip the card and answer "Bildim" (knew it) or "Bilemedim" (didn't know). Keyboard shortcuts: `Space` flips the card, `1` means "Bilemedim", `2` means "Bildim"
 - **Spaced repetition:** uses the Leitner box system. A card you know comes back after 1, 3, 7, 16 and then 35 days. A card you miss goes back to the first box and shows up again later in the same session
 - **Progress:** cards learned, daily streak, longest streak and activity for the last 14 days
+- **Dark mode:** follows the system setting by default. The button in the top bar switches between Sistem, Açık (light) and Koyu (dark), and the choice is remembered on that device
 - **Persistent data:** stored in the browser's `localStorage` for now
 - **Backup:** the "İlerleme" page can download all decks, cards and progress as a JSON file and restore them from it (this replaces the current data). It reminds you if you haven't made a backup in 14 days
 
@@ -44,6 +45,7 @@ frontend/
   js/wordsheet.js # tap a word to see its meaning and add it to a deck
   js/lemmas.js    # dictionary forms of inflected words ("went" → "go")
   js/homophones.js  # words that sound the same, accepted in dictation
+  js/theme.js     # light/dark theme toggle
   js/util.js      # shared helpers
   js/storage.js   # data layer (localStorage for now)
   js/srs.js       # spaced repetition algorithm

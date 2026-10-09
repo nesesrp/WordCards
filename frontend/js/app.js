@@ -6,6 +6,7 @@ import { renderPractice } from './practice.js';
 import { renderReadingList, renderReader } from './reading.js';
 import { renderPodcastList, renderEpisode } from './podcast.js';
 import { esc, shuffle } from './util.js';
+import { initThemeToggle } from './theme.js';
 
 const app = document.getElementById('app');
 
@@ -84,6 +85,7 @@ async function updateNav(hash) {
   document.getElementById('streak').textContent = streak ? `🔥 ${streak} gün` : '';
 }
 
+initThemeToggle(document.getElementById('theme-toggle'));
 window.addEventListener('hashchange', router);
 router();
 

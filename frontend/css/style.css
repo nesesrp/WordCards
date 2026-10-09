@@ -1,46 +1,30 @@
 :root {
-  --bg: #f6f5f2;
-  --surface: #ffffff;
-  --surface-2: #f0eee9;
-  --text: #1f1d1a;
-  --muted: #6d6860;
-  --border: #e3e0d9;
-  --primary: #0f766e;
-  --primary-text: #ffffff;
-  --success: #16a34a;
-  --danger: #dc2626;
-  --warn-bg: #fff4d6;
-  --warn-text: #8a5a00;
-  --ok-bg: #dcfce7;
-  --ok-text: #166534;
-  --new-bg: #d5f2ec;
-  --new-text: #115e59;
+  /* Each color is light-dark(light, dark). Which one applies follows the
+     system setting, or the theme picked with the button in the top bar. */
+  --bg: light-dark(#f6f5f2, #15161a);
+  --surface: light-dark(#ffffff, #1e2026);
+  --surface-2: light-dark(#f0eee9, #272a31);
+  --text: light-dark(#1f1d1a, #ecebe8);
+  --muted: light-dark(#6d6860, #9b9890);
+  --border: light-dark(#e3e0d9, #30333b);
+  --primary: light-dark(#0f766e, #2dd4bf);
+  --primary-text: light-dark(#ffffff, #062824);
+  --success: light-dark(#16a34a, #4ade80);
+  --danger: light-dark(#dc2626, #f87171);
+  --on-strong: light-dark(#ffffff, #111111);
+  --warn-bg: light-dark(#fff4d6, #3d2f0a);
+  --warn-text: light-dark(#8a5a00, #fcd34d);
+  --ok-bg: light-dark(#dcfce7, #12321f);
+  --ok-text: light-dark(#166534, #86efac);
+  --new-bg: light-dark(#d5f2ec, #12332f);
+  --new-text: light-dark(#115e59, #99f6e4);
   --radius: 16px;
-  --shadow: 0 1px 2px rgb(0 0 0 / 0.03), 0 2px 8px rgb(0 0 0 / 0.03);
+  --shadow: 0 1px 2px light-dark(rgb(0 0 0 / 0.03), rgb(0 0 0 / 0.25)),
+    0 2px 8px light-dark(rgb(0 0 0 / 0.03), rgb(0 0 0 / 0.2));
   color-scheme: light dark;
 }
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #15161a;
-    --surface: #1e2026;
-    --surface-2: #272a31;
-    --text: #ecebe8;
-    --muted: #9b9890;
-    --border: #30333b;
-    --primary: #2dd4bf;
-    --primary-text: #062824;
-    --success: #4ade80;
-    --danger: #f87171;
-    --warn-bg: #3d2f0a;
-    --warn-text: #fcd34d;
-    --ok-bg: #12321f;
-    --ok-text: #86efac;
-    --new-bg: #12332f;
-    --new-text: #99f6e4;
-    --shadow: 0 1px 2px rgb(0 0 0 / 0.25), 0 2px 8px rgb(0 0 0 / 0.2);
-  }
-}
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
 
 * { box-sizing: border-box; }
 
@@ -89,6 +73,16 @@ h1, h2 { line-height: 1.2; }
 }
 .topbar nav a.active { background: var(--surface-2); color: var(--text); }
 .streak { font-weight: 600; margin-left: 6px; white-space: nowrap; }
+.theme-toggle {
+  font: inherit;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  cursor: pointer;
+  line-height: 1;
+}
+.theme-toggle:hover { background: var(--surface-2); }
 
 /* --- Buttons and forms --- */
 
@@ -112,14 +106,11 @@ h1, h2 { line-height: 1.2; }
 .btn:hover { filter: brightness(0.97); }
 .btn:active { transform: scale(0.97); }
 .btn.primary { background: var(--primary); border-color: var(--primary); color: var(--primary-text); }
-.btn.success { background: var(--success); border-color: var(--success); color: #fff; }
+.btn.success { background: var(--success); border-color: var(--success); color: var(--on-strong); }
 .btn.danger { color: var(--danger); }
-.btn.danger.big { background: var(--danger); border-color: var(--danger); color: #fff; }
+.btn.danger.big { background: var(--danger); border-color: var(--danger); color: var(--on-strong); }
 .btn.small { padding: 6px 12px; font-size: 0.9rem; }
 .btn.big { padding: 14px 24px; font-size: 1.05rem; flex: 1; max-width: 260px; }
-@media (prefers-color-scheme: dark) {
-  .btn.success, .btn.danger.big { color: #111; }
-}
 
 kbd {
   font: 0.75rem ui-monospace, monospace;

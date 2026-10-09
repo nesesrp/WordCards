@@ -6,6 +6,13 @@
   <title>WordCards</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗂️</text></svg>">
   <link rel="stylesheet" href="css/style.css">
+  <script>
+    // Apply the saved theme before the first paint (see js/theme.js).
+    try {
+      const theme = localStorage.getItem('wordcards:theme');
+      if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+    } catch {}
+  </script>
 </head>
 <body>
   <header class="topbar">
@@ -16,6 +23,7 @@
       <a href="#/library" data-nav="library">Hazır</a>
       <a href="#/stats" data-nav="stats">İlerleme</a>
       <span class="streak" id="streak" title="Günlük seri"></span>
+      <button type="button" class="theme-toggle" id="theme-toggle"></button>
     </nav>
   </header>
   <main id="app" class="container"></main>
