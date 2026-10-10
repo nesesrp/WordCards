@@ -356,6 +356,46 @@ input:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
 .activity-bar span { display: block; width: 100%; background: var(--primary); border-radius: 4px 4px 0 0; min-height: 2px; opacity: 0.85; }
 .activity-label { font-size: 0.7rem; color: var(--muted); }
 .activity-day.today .activity-label { color: var(--text); font-weight: 700; }
+/* Dashed line at the daily goal; days that reached it get a green bar. */
+.activity-bar { position: relative; }
+.activity-bar::before {
+  content: "";
+  position: absolute;
+  inset-inline: -3px;
+  bottom: var(--goal);
+  border-top: 1px dashed var(--muted);
+  opacity: 0.6;
+}
+.activity-day.met .activity-bar span { background: var(--success); }
+
+/* --- Daily goal --- */
+
+.goal-ring {
+  --size: 22px;
+  flex: none;
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  background: conic-gradient(var(--primary) calc(var(--pct) * 1%), var(--surface-2) 0);
+  mask: radial-gradient(circle, transparent 52%, #000 54%);
+}
+.goal-ring.met { background: var(--success); }
+.pill.goal .goal-ring { --size: 18px; }
+.goal-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.goal-card .goal-ring { --size: 52px; }
+.goal-text { flex: 1; min-width: 160px; display: flex; flex-direction: column; gap: 2px; }
+.goal-pick { display: flex; flex-direction: column; gap: 4px; }
+.goal-met { font-size: 1.1rem; font-weight: 700; color: var(--ok-text); }
 
 .deck-progress { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
 .deck-progress li { display: grid; grid-template-columns: minmax(0, 1fr) 2fr auto; align-items: center; gap: 12px; }

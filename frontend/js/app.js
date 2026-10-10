@@ -1,6 +1,8 @@
 import * as db from './storage.js';
 import { review, isDue, isLearned, dueLabel, LEARNED_BOX } from './srs.js';
-import { currentStreak, longestStreak, lastNDays, dateKey } from './stats.js';
+import {
+  currentStreak, longestStreak, lastNDays, dateKey, dailyGoal, GOAL_OPTIONS,
+} from './stats.js';
 import { LEVELS, levelName, loadPresets } from './presets.js';
 import { renderPractice } from './practice.js';
 import { renderReadingList, renderReader } from './reading.js';
@@ -12,6 +14,12 @@ const app = document.getElementById('app');
 
 const levelBadge = (level) =>
   level ? `<span class="badge level" title="${esc(levelName(level))}">${esc(level)}</span>` : '';
+
+// Ring that fills up as today's reviews approach the daily goal.
+const goalRing = (done, goal) => {
+  const pct = Math.min(100, Math.round((done / goal) * 100));
+  return `<span class="goal-ring ${done >= goal ? 'met' : ''}" style="--pct:${pct}" aria-hidden="true"></span>`;
+};
 
 const levelOptions = (selected) => `
   <option value="">Seviye yok</option>
@@ -100,10 +108,14 @@ function notFound() {
 // ---------------------------------------------------------------------------
 
 async function renderHub() {
-  const [cards, activity] = await Promise.all([db.getAllCards(), db.getActivity()]);
+  const [cards, activity, settings] = await Promise.all([
+    db.getAllCards(), db.getActivity(), db.getSettings(),
+  ]);
   const now = Date.now();
   const due = cards.filter((c) => isDue(c, now)).length;
   const streak = currentStreak(activity, now);
+  const today = activity[dateKey(now)] || 0;
+  const goal = dailyGoal(settings);
 
   // Section names stay in English on purpose: they name the skills being learned.
   const tile = ({ href, icon, title, color, badge }) => `
@@ -118,6 +130,10 @@ async function renderHub() {
       <h1>Bugün ne çalışalım?</h1>
       ${cards.length ? `
         <div class="hero-stats">
+          <a class="pill goal" href="#/stats" title="Günlük hedef: ${goal} tekrar">
+            ${goalRing(today, goal)}
+            ${today >= goal ? 'Günlük hedef tamam' : `Bugün ${today}/${goal}`}
+          </a>
           <span class="pill">📚 ${cards.length.toLocaleString('tr')} kelime</span>
           ${streak ? `<span class="pill">🔥 ${streak} günlük seri</span>` : ''}
           ${due ? `<a class="pill due" href="#/decks">⏰ ${due} kart bekliyor</a>` : ''}
@@ -442,7 +458,9 @@ async function renderStudy(id, all) {
   }
 
   async function finish() {
-    const streak = currentStreak(await db.getActivity());
+    const [activity, settings] = await Promise.all([db.getActivity(), db.getSettings()]);
+    const streak = currentStreak(activity);
+    const goalMet = (activity[dateKey()] || 0) >= dailyGoal(settings);
     updateNav(location.hash);
     app.innerHTML = `
       <div class="done">
@@ -450,6 +468,7 @@ async function renderStudy(id, all) {
         <h1>Tebrikler!</h1>
         <p>${total} kartı tamamladın${missed.size ? `, ${missed.size} tanesini ilk seferde bilemedin` : ' ve hepsini ilk seferde bildin'}.</p>
         ${streak ? `<p class="streak-big">🔥 ${streak} günlük seri</p>` : ''}
+        ${goalMet ? '<p class="goal-met">🎯 Bugünkü hedefini tamamladın</p>' : ''}
         <div class="done-actions">
           <a class="btn" href="#/decks">Desteler</a>
           <a class="btn primary" href="#/deck/${id}">Desteye dön</a>
@@ -591,8 +610,11 @@ async function renderStats() {
   const learned = cards.filter(isLearned).length;
   const due = cards.filter((c) => isDue(c, now)).length;
   const days = lastNDays(activity, 14, now);
-  const maxCount = Math.max(1, ...days.map((d) => d.count));
+  const goal = dailyGoal(settings);
+  const maxCount = Math.max(goal, ...days.map((d) => d.count));
   const todayKey = dateKey(now);
+  const today = activity[todayKey] || 0;
+  const goalDays = days.filter((d) => d.count >= goal).length;
 
   const stat = (value, label) => `
     <div class="stat"><span class="stat-value">${value}</span><span class="stat-label">${label}</span></div>`;
@@ -600,19 +622,34 @@ async function renderStats() {
   app.innerHTML = `
     <section class="page-head"><h1>İlerleme</h1></section>
 
+    <div class="goal-card">
+      ${goalRing(today, goal)}
+      <div class="goal-text">
+        <strong>${today >= goal ? 'Bugünkü hedef tamam 🎯' : `Bugün ${today}/${goal} tekrar`}</strong>
+        <span class="muted small">Kart çalışma, pratik, okuma ve podcast sayılır.</span>
+      </div>
+      <label class="goal-pick">
+        <span class="muted small">Günlük hedef</span>
+        <select id="goal-select">
+          ${GOAL_OPTIONS.map((n) => `<option value="${n}" ${n === goal ? 'selected' : ''}>${n} tekrar</option>`).join('')}
+        </select>
+      </label>
+    </div>
+
     <div class="stats-grid">
       ${stat(`🔥 ${currentStreak(activity, now)}`, 'Günlük seri')}
       ${stat(longestStreak(activity), 'En uzun seri')}
-      ${stat(activity[todayKey] || 0, 'Bugünkü tekrar')}
+      ${stat(`${goalDays}<small>/14</small>`, 'Hedefe ulaşılan gün')}
       ${stat(`${learned}<small>/${cards.length}</small>`, 'Öğrenilen kart')}
       ${stat(due, 'Tekrar bekleyen')}
       ${stat(decks.length, 'Deste')}
     </div>
 
     <h2 class="section-title">Son 14 gün</h2>
-    <div class="activity">
+    <div class="activity" style="--goal:${(goal / maxCount) * 100}%">
       ${days.map((d) => `
-        <div class="activity-day ${d.key === todayKey ? 'today' : ''}" title="${d.key}: ${d.count} tekrar">
+        <div class="activity-day ${d.key === todayKey ? 'today' : ''} ${d.count >= goal ? 'met' : ''}"
+          title="${d.key}: ${d.count} tekrar">
           <span class="activity-count">${d.count || ''}</span>
           <div class="activity-bar"><span style="height:${(d.count / maxCount) * 100}%"></span></div>
           <span class="activity-label">${d.label}</span>
@@ -638,6 +675,10 @@ async function renderStats() {
 
     ${backupSection(settings.lastBackup, cards.length, now)}`;
 
+  app.querySelector('#goal-select').addEventListener('change', async (e) => {
+    await db.saveSettings({ dailyGoal: Number(e.target.value) });
+    renderStats();
+  });
   setupBackup(app.querySelector('.backup'));
 }
 

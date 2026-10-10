@@ -15,6 +15,7 @@ A flashcard app for learning vocabulary with spaced repetition.
 - **Study mode:** flip the card and answer "Bildim" (knew it) or "Bilemedim" (didn't know). Keyboard shortcuts: `Space` flips the card, `1` means "Bilemedim", `2` means "Bildim"
 - **Spaced repetition:** uses the Leitner box system. A card you know comes back after 1, 3, 7, 16 and then 35 days. A card you miss goes back to the first box and shows up again later in the same session
 - **Progress:** cards learned, daily streak, longest streak and activity for the last 14 days
+- **Daily goal:** pick a daily target (10, 20, 30, 50 or 100 reviews) on the "İlerleme" page. Study answers, practice answers, finished reading texts and podcast episodes count towards it. The home page shows today's progress as a ring, and the 14-day chart marks the goal with a dashed line and colors the days that reached it green
 - **Dark mode:** follows the system setting by default. The button in the top bar switches between Sistem, Açık (light) and Koyu (dark), and the choice is remembered on that device
 - **Persistent data:** stored in the browser's `localStorage` for now
 - **Backup:** the "İlerleme" page can download all decks, cards and progress as a JSON file and restore them from it (this replaces the current data). It reminds you if you haven't made a backup in 14 days

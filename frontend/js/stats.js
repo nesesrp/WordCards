@@ -49,3 +49,9 @@ export function lastNDays(activity, n, now = Date.now()) {
     };
   });
 }
+
+// Daily goal: how many reviews (study answers and practice) to do each day.
+export const GOAL_OPTIONS = [10, 20, 30, 50, 100];
+export const DEFAULT_GOAL = 20;
+
+export const dailyGoal = (settings) => settings.dailyGoal || DEFAULT_GOAL;
