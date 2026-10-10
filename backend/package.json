@@ -1,0 +1,20 @@
+{
+  "name": "wordcards-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "REST API for WordCards (Express + SQLite)",
+  "type": "module",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=22.7"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.10.0",
+    "express": "^5.1.0"
+  }
+}

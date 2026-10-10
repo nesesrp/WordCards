@@ -91,44 +91,75 @@ Because of the share-alike sources, `frontend/data/wordlist.json` is distributed
 
 CEFR-J citation: The CEFR-J Wordlist Version 1.5. Compiled by Yukio Tono, Tokyo University of Foreign Studies. Retrieved from http://www.cefr-j.org/download.html. The app also credits the sources on the "Hazır" page.
 
-## Roadmap: backend
+## Backend
 
 **Stack:** Node.js + Express + SQLite
 
-- **Node.js:** the backend uses the same language as the frontend (JavaScript), and the frontend's `srs.js` and `stats.js` can be reused on the server as they are.
+- **Node.js:** the backend uses the same language as the frontend (JavaScript), and imports the frontend's `srs.js`, `stats.js` and the CEFR levels from `presets.js` as they are.
 - **Express:** a small, widely used web framework for building a REST API with little code.
 - **SQLite:** a single-file database (via `better-sqlite3`), so there is no database server to install or run. If the app grows, it can be swapped for PostgreSQL later without changing the API.
 
-Planned structure:
+The frontend doesn't use the backend yet; it still keeps its data in `localStorage` (see *Frontend migration* below).
+
+### Running the backend
+
+Needs Node.js 22.7 or newer.
+
+```bash
+cd backend
+npm install
+npm start      # http://localhost:3000, serves the API and the frontend
+npm test       # API tests, each with a fresh in-memory database
+```
+
+The data is stored in `backend/data/wordcards.db` (not committed). `PORT` and `DB_PATH` environment variables change the port and the database file.
+
+### Structure
 
 ```
 backend/
   package.json
   src/
-    server.js       # Express app, serves the API and the frontend
-    db.js           # SQLite connection and schema
+    server.js       # starts the server (PORT, DB_PATH)
+    app.js          # Express app: API under /api, frontend as static files
+    db.js           # SQLite connection, schema and row mapping
+    validate.js     # request validation and HTTP errors
     routes/
-      decks.js
-      cards.js
-      stats.js
+      decks.js      # decks, cards of a deck, ready-made deck import
+      cards.js      # editing cards and study answers
+      stats.js      # activity and streaks
+      settings.js
+      backup.js
+  test/
+    api.test.js
 ```
 
-Planned API:
+### API
+
+Requests and responses are JSON, with the same objects the frontend stores (`{ id, name, level, createdAt }` for decks, `{ id, deckId, front, back, box, due, … }` for cards). Errors come back as `{ "error": "…" }` with a Turkish message that can be shown to the user.
 
 | Method | Endpoint                 | Description                          |
 | ------ | ------------------------ | ------------------------------------ |
-| GET    | `/api/decks`             | List decks                           |
-| POST   | `/api/decks`             | Create a deck                        |
+| GET    | `/api/decks`             | List decks, newest first             |
+| POST   | `/api/decks`             | Create a deck (`{ name, level? }`)   |
+| GET    | `/api/decks/:id`         | Get a deck                           |
 | PATCH  | `/api/decks/:id`         | Rename a deck or change its level    |
 | DELETE | `/api/decks/:id`         | Delete a deck and its cards          |
 | GET    | `/api/decks/:id/cards`   | List the cards in a deck             |
-| POST   | `/api/decks/:id/cards`   | Add a card                           |
+| POST   | `/api/decks/:id/cards`   | Add a card (`{ front, back }`)       |
+| POST   | `/api/presets/import`    | Add ready-made decks with their cards (`{ presets: [...] }`) |
+| GET    | `/api/cards`             | List all cards                       |
 | PATCH  | `/api/cards/:id`         | Edit a card                          |
 | DELETE | `/api/cards/:id`         | Delete a card                        |
-| POST   | `/api/cards/:id/review`  | Save a study answer (`{ knew: true }`) |
-| GET    | `/api/stats`             | Streak and activity data             |
+| POST   | `/api/cards/:id/review`  | Save a study answer (`{ knew: true }`); counts towards today's activity |
+| POST   | `/api/activity`          | Count practice, reading or podcast towards today (`{ count? }`) |
+| GET    | `/api/stats`             | Activity per day, today's count, current and longest streak |
+| GET    | `/api/settings`          | Get all settings                     |
+| PATCH  | `/api/settings`          | Merge fields into the settings       |
+| GET    | `/api/backup`            | Download everything (same format as the frontend's backup file) |
+| POST   | `/api/backup`            | Replace everything with a backup     |
 
-**Frontend migration:** only `frontend/js/storage.js` needs to change. Its functions are already async, so their bodies will be replaced with `fetch('/api/...')` calls and the rest of the UI code stays as it is.
+**Frontend migration:** only `frontend/js/storage.js` needs to change. Its functions are already async, so their bodies will be replaced with `fetch('/api/...')` calls and the rest of the UI code stays as it is. Existing data can be moved over with a backup file.
 
 **Later:** user accounts (so each user has their own decks), and importing/exporting decks.
 
