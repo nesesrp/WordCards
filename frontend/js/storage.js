@@ -72,6 +72,14 @@ export async function updateDeck(id, fields) {
   return deck;
 }
 
+// Deletes the deck together with its cards.
+export async function deleteDeck(id) {
+  const state = read();
+  state.decks = state.decks.filter((d) => d.id !== id);
+  state.cards = state.cards.filter((c) => c.deckId !== id);
+  write(state);
+}
+
 // Copies ready-made decks (see presets.js) into the user's decks with fresh
 // cards. Takes a list so that adding a whole level is a single write.
 export async function importPresets(presets) {
